@@ -13,6 +13,9 @@ class Settings:
     healthcheck_db_timeout: float
     kktix_organization: str
     allowed_emails: tuple[str, ...]
+    frontend_origins: tuple[str, ...]
+    frontend_redirect_url: str
+    auth_token_ttl_seconds: int
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -29,6 +32,13 @@ class Settings:
                 for e in os.getenv("ALLOWED_EMAILS", "").split(",")
                 if e.strip()
             ),
+            frontend_origins=tuple(
+                o.strip()
+                for o in os.getenv("FRONTEND_ORIGINS", "").split(",")
+                if o.strip()
+            ),
+            frontend_redirect_url=os.getenv("FRONTEND_REDIRECT_URL", ""),
+            auth_token_ttl_seconds=int(os.getenv("AUTH_TOKEN_TTL_SECONDS", "86400")),
         )
 
 
