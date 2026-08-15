@@ -416,10 +416,10 @@ Session is signed using `SESSION_SECRET` via Starlette's `SessionMiddleware`.
 
 ### SPA Authentication (separated frontend)
 
-The `argus-dashboard` frontend is a statically-exported (pure client-side)
-Next.js app hosted on a different origin, so it cannot rely on the
-same-origin session cookie used by the legacy server-rendered pages above.
-Instead it uses a stateless Bearer token:
+A future separated frontend — a statically-exported (pure client-side) app
+hosted on a different origin — cannot rely on the same-origin session
+cookie used by the legacy server-rendered pages above. Instead it uses a
+stateless Bearer token:
 
 1. Frontend navigates the browser to `/dashboard/login/spa`.
 2. Backend completes the Google OAuth flow exactly as above, but at

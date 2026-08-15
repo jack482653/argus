@@ -102,8 +102,8 @@ You will be redirected to Google to sign in. Only emails in `ALLOWED_EMAILS` are
 
 ### Separated frontend (SPA)
 
-The `argus-dashboard` project (a statically-exported Next.js app, pure
-client-side rendering) consumes this backend's `/dashboard/api/*` JSON API
+A future statically-exported (pure client-side) frontend, hosted on a
+separate origin, can consume this backend's `/dashboard/api/*` JSON API
 directly, authenticating via a Bearer token instead of the session cookie
 used above. See [SPEC.md → SPA Authentication](SPEC.md#spa-authentication-separated-frontend)
 for the full flow. Configure `FRONTEND_ORIGINS` and `FRONTEND_REDIRECT_URL`
