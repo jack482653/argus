@@ -52,6 +52,9 @@ Argus uses a **vertical slice** layout: each feature owns its full stack (HTTP r
 | `GET` | `/health` | — | Liveness + DB readiness check | [Health Check](#health-check) |
 | `GET` | `/dashboard/login` | — | Start Google OAuth flow | [Dashboard](#dashboard) |
 | `GET` | `/dashboard/oauth/callback` | — | OAuth redirect target | [Dashboard](#dashboard) |
+| `GET` | `/dashboard/login/spa` | — | Start Google OAuth flow for the separated SPA frontend | [Dashboard](#dashboard) |
+| `GET` | `/dashboard/oauth/callback/spa` | — | OAuth redirect target for the SPA; issues a Bearer token | [Dashboard](#dashboard) |
+| `GET` | `/dashboard/api/me` | session or Bearer (401) | JSON: currently authenticated user's email | [Dashboard](#dashboard) |
 | `GET` | `/dashboard/logout` | — | Clear session, redirect to login | [Dashboard](#dashboard) |
 | `GET` | `/dashboard` | session (HTML) | Event list page | [Dashboard](#dashboard) |
 | `GET` | `/dashboard/events/{slug}` | session (HTML) | Per-event chart page | [Dashboard](#dashboard) |
@@ -155,6 +158,9 @@ argus/
 | `LOG_LEVEL` | `INFO` | Python application log level |
 | `ALLOWED_EMAILS` | — | Comma-separated email allowlist for dashboard access |
 | `ARGUS_HTTPS_ONLY` | `0` | Set to `1` to mark session cookies as Secure |
+| `FRONTEND_ORIGINS` | — | Comma-separated list of frontend origins allowed to call the API cross-origin (e.g. `http://localhost:3000,https://dashboard.example.com`); leave unset to disable CORS |
+| `FRONTEND_REDIRECT_URL` | — | Where the SPA OAuth callback redirects after login (with the API token appended as a URL fragment) |
+| `AUTH_TOKEN_TTL_SECONDS` | `86400` | Lifetime in seconds of tokens issued to the SPA frontend (default: 86400 = 24h) |
 
 Config is loaded at startup via `Settings.from_env()` and `Secrets.from_env()` in `config.py`. Secret values are masked in `__repr__`.
 
@@ -407,6 +413,36 @@ Server-side OAuth 2.0 with Google as the identity provider. After successful OAu
 6. On rejection: 403 page
 
 Session is signed using `SESSION_SECRET` via Starlette's `SessionMiddleware`.
+
+### SPA Authentication (separated frontend)
+
+The `argus-dashboard` frontend is a statically-exported (pure client-side)
+Next.js app hosted on a different origin, so it cannot rely on the
+same-origin session cookie used by the legacy server-rendered pages above.
+Instead it uses a stateless Bearer token:
+
+1. Frontend navigates the browser to `/dashboard/login/spa`.
+2. Backend completes the Google OAuth flow exactly as above, but at
+   `/dashboard/oauth/callback/spa`.
+3. On success, backend redirects to `{FRONTEND_REDIRECT_URL}#token=<token>`.
+   The token is a `URLSafeTimedSerializer`-signed payload (signed with
+   `SESSION_SECRET`, same secret as the session cookie), valid for
+   `AUTH_TOKEN_TTL_SECONDS`. On failure, redirects to
+   `{FRONTEND_REDIRECT_URL}?error=oauth_exchange_failed` or `?error=access_denied`.
+4. Frontend reads the token from the URL fragment (never sent to any server —
+   not even the backend's own access logs), stores it client-side, and sends
+   it as `Authorization: Bearer <token>` on every subsequent API call.
+5. `GET /dashboard/api/me` returns the authenticated email — used by the
+   frontend to bootstrap/validate its session on load.
+
+Logout is client-side only (discard the token); there is no server-side
+revocation before expiry. All `/dashboard/api/*` routes accept either this
+Bearer token or the legacy session cookie via the same `require_login`
+dependency — no route-specific auth logic.
+
+CORS is enabled only for origins listed in `FRONTEND_ORIGINS`; requests from
+any other origin do not receive `Access-Control-Allow-Origin` and are blocked
+by the browser.
 
 ### Time Series Computation
 

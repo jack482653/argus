@@ -35,6 +35,9 @@ uv sync
 | `LOG_LEVEL` | `INFO` | Python application log level |
 | `ALLOWED_EMAILS` | — | Comma-separated email allowlist for dashboard access |
 | `ARGUS_HTTPS_ONLY` | `0` | Set to `1` to mark session cookies as Secure |
+| `FRONTEND_ORIGINS` | — | Comma-separated list of frontend origins allowed to call the API cross-origin (e.g. `http://localhost:3000,https://dashboard.example.com`) |
+| `FRONTEND_REDIRECT_URL` | — | Where the SPA OAuth callback redirects after login (with the API token appended as a URL fragment) |
+| `AUTH_TOKEN_TTL_SECONDS` | `86400` | Lifetime in seconds of tokens issued to the SPA frontend (default: 24h) |
 
 ## Usage
 
@@ -94,6 +97,19 @@ uv run uvicorn argus.main:app --host 0.0.0.0 --port 8000
 ```
 
 You will be redirected to Google to sign in. Only emails in `ALLOWED_EMAILS` are granted access.
+
+### Separated frontend (SPA)
+
+The `argus-dashboard` project (a statically-exported Next.js app, pure
+client-side rendering) consumes this backend's `/dashboard/api/*` JSON API
+directly, authenticating via a Bearer token instead of the session cookie
+used above. See [SPEC.md → SPA Authentication](SPEC.md#spa-authentication-separated-frontend)
+for the full flow. Configure `FRONTEND_ORIGINS` and `FRONTEND_REDIRECT_URL`
+to enable it.
+
+The legacy server-rendered pages (`/dashboard`, `/dashboard/events/{slug}`,
+`/dashboard/webhook-logs`) keep working unchanged and will be removed once
+the separated frontend reaches parity.
 
 ## Production / Deployment
 
