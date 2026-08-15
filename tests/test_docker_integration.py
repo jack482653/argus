@@ -125,6 +125,19 @@ def test_docker_image_serves_frontend_shell(api_url: str) -> None:
         assert "text/html" in response.headers["content-type"]
 
 
+def test_docker_image_serves_event_detail_page(api_url: str) -> None:
+    """The event-detail page (query-string based) is served at /dashboard/events.
+
+    Like `/dashboard`, `/dashboard/events` (no trailing slash) 307-redirects to
+    `/dashboard/events/` per Starlette's `redirect_slashes` mount behavior, so
+    the client here follows it just as a browser would.
+    """
+    with httpx.Client(base_url=api_url, timeout=5, follow_redirects=True) as client:
+        response = client.get("/dashboard/events", params={"slug": "anything"})
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+
+
 def _start_postgresql(container: str, network: str) -> None:
     _run(
         [
