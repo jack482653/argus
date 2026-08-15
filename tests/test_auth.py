@@ -17,7 +17,11 @@ def dashboard_app(monkeypatch):
     monkeypatch.setattr(
         config,
         "settings",
-        replace(config.settings, allowed_emails=("chester@example.com",)),
+        replace(
+            config.settings,
+            allowed_emails=("chester@example.com",),
+            frontend_redirect_url="http://localhost:3000/auth/callback",
+        ),
     )
     monkeypatch.setattr(
         config,
@@ -196,3 +200,55 @@ async def test_api_me_returns_authenticated_email(dashboard_app):
 
     assert response.status_code == 200
     assert response.json() == {"email": "chester@example.com"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("email", "should_allow"),
+    [("chester@example.com", True), ("steve@example.com", False)],
+)
+async def test_spa_oauth_callback_redirects_with_token_or_error(
+    dashboard_app, monkeypatch, email, should_allow
+):
+    """SPA login redirects to the frontend with a token, or an error, in the URL."""
+    with run_server_in_thread(
+        user_claims=[User(sub=email, claims={"email": email})]
+    ) as server:
+        provider_url = f"http://localhost:{server.server_port}"
+        monkeypatch.setattr(
+            auth,
+            "_GOOGLE_SERVER_METADATA_URL",
+            f"{provider_url}/.well-known/openid-configuration",
+        )
+        auth.reset_oauth()
+
+        try:
+            transport = httpx.ASGITransport(app=dashboard_app)
+            async with httpx.AsyncClient(
+                transport=transport, base_url="http://test"
+            ) as client:
+                login = await client.get(
+                    "/dashboard/login/spa", follow_redirects=False
+                )
+
+                async with httpx.AsyncClient() as provider_client:
+                    authorized = await provider_client.post(
+                        login.headers["location"], data={"sub": email}
+                    )
+
+                callback = urlsplit(authorized.headers["location"])
+                response = await client.get(
+                    f"{callback.path}?{callback.query}", follow_redirects=False
+                )
+
+                assert response.status_code == 302
+                location = response.headers["location"]
+                assert location.startswith("http://localhost:3000/auth/callback")
+                if should_allow:
+                    assert "#token=" in location
+                    token = location.split("#token=", 1)[1]
+                    assert auth.verify_api_token(token) == email
+                else:
+                    assert location.endswith("?error=access_denied")
+        finally:
+            auth.reset_oauth()

@@ -47,8 +47,11 @@ async def login(request: Request):
     return await auth.get_oauth().google.authorize_redirect(request, str(redirect_uri))
 
 
-@router.get("/dashboard/oauth/callback", name="oauth_callback")
-async def oauth_callback(request: Request):
+async def _exchange_google_email(request: Request) -> str:
+    """Exchange the OAuth authorization code for the verified Google email.
+
+    Raises HTTPException(400) if the exchange fails or no email is returned.
+    """
     try:
         token = await auth.get_oauth().google.authorize_access_token(request)
     except Exception as e:
@@ -59,6 +62,12 @@ async def oauth_callback(request: Request):
     email = userinfo.get("email")
     if not email:
         raise HTTPException(status_code=400, detail="no_email_in_token")
+    return email
+
+
+@router.get("/dashboard/oauth/callback", name="oauth_callback")
+async def oauth_callback(request: Request):
+    email = await _exchange_google_email(request)
 
     if not auth.is_email_allowed(email):
         logger.warning("oauth: rejected email %s", email)
@@ -70,6 +79,37 @@ async def oauth_callback(request: Request):
 
     request.session["user"] = {"email": email}
     return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+
+
+@router.get("/dashboard/login/spa")
+async def login_spa(request: Request):
+    redirect_uri = request.url_for("oauth_callback_spa")
+    return await auth.get_oauth().google.authorize_redirect(request, str(redirect_uri))
+
+
+@router.get("/dashboard/oauth/callback/spa", name="oauth_callback_spa")
+async def oauth_callback_spa(request: Request):
+    frontend_url = config.settings.frontend_redirect_url
+    try:
+        email = await _exchange_google_email(request)
+    except HTTPException:
+        return RedirectResponse(
+            url=f"{frontend_url}?error=oauth_exchange_failed",
+            status_code=status.HTTP_302_FOUND,
+        )
+
+    if not auth.is_email_allowed(email):
+        logger.warning("oauth(spa): rejected email %s", email)
+        return RedirectResponse(
+            url=f"{frontend_url}?error=access_denied",
+            status_code=status.HTTP_302_FOUND,
+        )
+
+    api_token = auth.issue_api_token(email)
+    return RedirectResponse(
+        url=f"{frontend_url}#token={api_token}",
+        status_code=status.HTTP_302_FOUND,
+    )
 
 
 @router.get("/dashboard/logout")
