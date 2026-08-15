@@ -65,8 +65,25 @@ def is_email_allowed(email: str) -> bool:
     return email.lower() in {e.lower() for e in config.settings.allowed_emails}
 
 
+_BEARER_PREFIX = "Bearer "
+
+
 async def require_login(request: Request) -> str:
-    """FastAPI dependency for API routes. Returns email; raises 401 if not authed."""
+    """FastAPI dependency for API routes. Returns email; raises 401 if not authed.
+
+    Accepts either a signed session cookie (the legacy server-rendered
+    dashboard) or an `Authorization: Bearer <token>` header (the separated
+    SPA frontend).
+    """
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith(_BEARER_PREFIX):
+        email = verify_api_token(auth_header[len(_BEARER_PREFIX) :])
+        if email and is_email_allowed(email):
+            return email
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="login_required"
+        )
+
     user = request.session.get("user")
     if not user or not user.get("email") or not is_email_allowed(user["email"]):
         raise HTTPException(

@@ -22,7 +22,9 @@ def dashboard_app(monkeypatch):
     monkeypatch.setattr(
         config,
         "secrets",
-        config.Secrets("", "test-client-id", "test-client-secret", ""),
+        config.Secrets(
+            "", "test-client-id", "test-client-secret", "test-session-secret"
+        ),
     )
     monkeypatch.setattr(router.queries, "list_events", lambda: [])
 
@@ -136,3 +138,44 @@ async def test_google_oauth_accepts_only_allowlisted_user(
                     ).status_code == 200
         finally:
             auth.reset_oauth()
+
+
+@pytest.mark.asyncio
+async def test_require_login_accepts_valid_bearer_token(dashboard_app):
+    """A valid Authorization: Bearer token authorizes API routes without a session."""
+    token = auth.issue_api_token("chester@example.com")
+
+    transport = httpx.ASGITransport(app=dashboard_app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/dashboard/api/events", headers={"Authorization": f"Bearer {token}"}
+        )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_require_login_rejects_bearer_token_for_disallowed_email(dashboard_app):
+    """A well-signed token for a non-allowlisted email is still rejected."""
+    token = auth.issue_api_token("steve@example.com")
+
+    transport = httpx.ASGITransport(app=dashboard_app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/dashboard/api/events", headers={"Authorization": f"Bearer {token}"}
+        )
+
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_require_login_rejects_garbage_bearer_token(dashboard_app):
+    """A malformed token is rejected the same as a missing session."""
+    transport = httpx.ASGITransport(app=dashboard_app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/dashboard/api/events",
+            headers={"Authorization": "Bearer not-a-real-token"},
+        )
+
+    assert response.status_code == 401
