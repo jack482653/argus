@@ -6,6 +6,8 @@ import {
   deleteWebhookLog,
   listWebhookLogs,
 } from "@/apis/webhook-logs";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/hooks/use-require-auth";
 import type { WebhookLogsPage } from "@/types/responses/webhook-logs";
 
@@ -76,70 +78,93 @@ export default function WebhookLogsPage() {
   };
 
   return (
-    <main className="mx-auto max-w-4xl p-6">
-      <div className="flex items-baseline justify-between">
-        <h1 className="font-heading text-2xl">Webhook Logs</h1>
-        <button
+    <main className="mx-auto max-w-4xl p-8">
+      <div className="flex items-center justify-between">
+        <h1 className="font-heading text-3xl font-semibold">Webhook Logs</h1>
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
+          className="text-destructive hover:text-destructive"
           onClick={handleClearAll}
           disabled={isPending}
-          className="text-sm text-destructive underline"
         >
           Clear all
-        </button>
+        </Button>
       </div>
-      {error && <p className="mt-4 text-destructive">{error}</p>}
-      {page === null && !error && <p className="mt-4">Loading…</p>}
+      {error && <p className="mt-4 text-base text-destructive">{error}</p>}
+      {page === null && !error && (
+        <p className="mt-4 text-base text-muted-foreground">Loading…</p>
+      )}
       {page && (
         <>
-          <table className="mt-4 w-full text-left text-sm">
-            <thead>
-              <tr>
-                <th>Method</th>
-                <th>Channel</th>
-                <th>Created</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {page.items.map((item) => (
-                <tr key={item.id}>
-                  <td>{item.method}</td>
-                  <td>{item.channel ?? "—"}</td>
-                  <td>{item.created_at}</td>
-                  <td>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(item.id)}
-                      disabled={isPending}
-                      className="text-destructive underline"
-                    >
-                      Delete
-                    </button>
-                  </td>
+          <div className="mt-6 overflow-hidden rounded-lg border border-border bg-card">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs text-muted-foreground">
+                  <th className="px-4 py-2.5 font-medium">Method</th>
+                  <th className="px-4 py-2.5 font-medium">Channel</th>
+                  <th className="px-4 py-2.5 font-medium">Created</th>
+                  <th className="px-4 py-2.5" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="mt-4 flex items-center gap-4">
-            <button
+              </thead>
+              <tbody>
+                {page.items.map((item) => (
+                  <tr
+                    key={item.id}
+                    className="border-b border-border last:border-b-0"
+                  >
+                    <td className="px-4 py-2.5">
+                      <Badge className="rounded bg-chart-3/15 px-2 py-0.5 font-mono text-xs text-chart-3">
+                        {item.method}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-2.5 text-foreground">
+                      {item.channel ?? "—"}
+                    </td>
+                    <td className="px-4 py-2.5 text-muted-foreground">
+                      {item.created_at}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(item.id)}
+                        disabled={isPending}
+                      >
+                        Delete
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-4 flex items-center gap-4 text-sm">
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               disabled={offset === 0}
               onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
             >
               Previous
-            </button>
-            <span>
+            </Button>
+            <span className="text-muted-foreground">
               {offset + 1}–{Math.min(offset + PAGE_SIZE, page.total)} of{" "}
               {page.total}
             </span>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               disabled={offset + PAGE_SIZE >= page.total}
               onClick={() => setOffset(offset + PAGE_SIZE)}
             >
               Next
-            </button>
+            </Button>
           </div>
         </>
       )}

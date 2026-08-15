@@ -32,6 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={cn(
+        "dark",
         "h-full",
         "antialiased",
         geistSans.variable,
@@ -42,14 +43,19 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       )}
     >
       <body className="flex min-h-full flex-col">
-        <nav className="flex items-center gap-4 border-b p-4 text-sm">
-          <Link href="/" className="font-heading text-base">
+        <nav className="flex items-center gap-6 border-b border-border px-6 py-4 text-sm">
+          <Link href="/" className="font-heading text-base font-semibold">
             Argus
           </Link>
-          <Link href="/webhook-logs">Webhook Logs</Link>
+          <Link
+            href="/webhook-logs"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Webhook Logs
+          </Link>
           <a
             href={`${BACKEND_ORIGIN}/dashboard/logout`}
-            className="ml-auto text-muted-foreground"
+            className="ml-auto text-muted-foreground transition-colors hover:text-foreground"
           >
             Logout
           </a>

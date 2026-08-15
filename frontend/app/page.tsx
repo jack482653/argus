@@ -2,9 +2,22 @@
 
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
+import { ChevronRight, RefreshCw } from "lucide-react";
 import { deleteEvent, listEvents, triggerReport } from "@/apis/events";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/hooks/use-require-auth";
 import type { EventSummary } from "@/types/responses/events";
+
+function formatStartDate(startAt: string | null): string | null {
+  if (!startAt) return null;
+  // Stored as a UTC ISO string with no offset (see SPEC.md); append "Z" so
+  // Date parses it as UTC rather than the browser's local time zone.
+  return new Date(`${startAt}Z`).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
 
 export default function DashboardHomePage() {
   const auth = useRequireAuth();
@@ -36,7 +49,9 @@ export default function DashboardHomePage() {
   }
   if (auth.status === "error") {
     return (
-      <p className="p-6 text-destructive">Failed to load: {auth.message}</p>
+      <p className="p-8 text-base text-destructive">
+        Failed to load: {auth.message}
+      </p>
     );
   }
   if (auth.status !== "authenticated") {
@@ -70,47 +85,81 @@ export default function DashboardHomePage() {
   };
 
   return (
-    <main className="mx-auto max-w-3xl p-6">
-      <div className="flex items-baseline justify-between">
-        <h1 className="font-heading text-2xl">Argus Dashboard</h1>
-        <span className="text-sm text-muted-foreground">{auth.user.email}</span>
-      </div>
-      <div className="mt-4">
-        <button
+    <main className="mx-auto max-w-3xl p-8">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-3xl font-semibold">Events</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {auth.user.email}
+          </p>
+        </div>
+        <Button
           type="button"
+          variant="secondary"
+          size="sm"
           onClick={handleTriggerReport}
           disabled={isPending}
-          className="text-sm text-primary underline underline-offset-4"
         >
+          <RefreshCw className="size-3.5" />
           Run report now
-        </button>
+        </Button>
       </div>
-      {error && <p className="mt-4 text-destructive">{error}</p>}
-      <ul className="mt-6 flex flex-col gap-2">
-        {events === null && !error && <li>Loading…</li>}
-        {events?.length === 0 && <li>No events yet.</li>}
-        {events?.map((event) => (
-          <li
-            key={event.event_slug}
-            className="flex items-center justify-between gap-4"
-          >
-            <Link
-              href={`/events?slug=${encodeURIComponent(event.event_slug)}`}
-              className="text-primary underline underline-offset-4"
+      {error && <p className="mt-4 text-base text-destructive">{error}</p>}
+      <div className="mt-8 flex flex-col gap-3">
+        {events === null && !error && (
+          <p className="text-base text-muted-foreground">Loading…</p>
+        )}
+        {events?.length === 0 && (
+          <p className="text-base text-muted-foreground">No events yet.</p>
+        )}
+        {events?.map((event) => {
+          const startLabel = formatStartDate(event.start_at);
+          return (
+            <div
+              key={event.event_slug}
+              className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-5 transition-colors hover:border-primary/40"
             >
-              {event.event_name}
-            </Link>
-            <button
-              type="button"
-              onClick={() => handleDelete(event.event_slug, event.event_name)}
-              disabled={isPending}
-              className="text-sm text-destructive underline"
-            >
-              Delete
-            </button>
-          </li>
-        ))}
-      </ul>
+              <Link
+                href={`/events?slug=${encodeURIComponent(event.event_slug)}`}
+                className="min-w-0 flex-1"
+              >
+                <div className="text-base font-medium">{event.event_name}</div>
+                <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                  {event.channel && (
+                    <Badge className="rounded-full bg-primary/15 px-2.5 py-0.5 text-xs text-primary">
+                      {event.channel}
+                    </Badge>
+                  )}
+                  {event.capacity !== null && (
+                    <span>Capacity {event.capacity}</span>
+                  )}
+                  {startLabel && (
+                    <>
+                      <span className="text-border">·</span>
+                      <span>Starts {startLabel}</span>
+                    </>
+                  )}
+                </div>
+              </Link>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() =>
+                    handleDelete(event.event_slug, event.event_name)
+                  }
+                  disabled={isPending}
+                >
+                  Delete
+                </Button>
+                <ChevronRight className="size-4 text-muted-foreground" />
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </main>
   );
 }

@@ -1,11 +1,22 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { ChevronLeft } from "lucide-react";
 import { getEventTimeseries } from "@/apis/events";
 import { EventChart } from "@/components/event-chart";
+import { Badge } from "@/components/ui/badge";
 import { useRequireAuth } from "@/hooks/use-require-auth";
 import type { EventTimeseries } from "@/types/responses/events";
+
+function formatStartDate(startAt: string | null): string | null {
+  if (!startAt) return null;
+  return new Date(`${startAt}Z`).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
 
 function EventDetailContent() {
   const auth = useRequireAuth();
@@ -57,10 +68,39 @@ function EventDetailContent() {
     return <p className="p-6">Loading…</p>;
   }
 
+  const startLabel = formatStartDate(timeseries.event.start_at);
+
   return (
-    <main className="mx-auto max-w-3xl p-6">
-      <h1 className="font-heading text-2xl">{timeseries.event.event_name}</h1>
-      <EventChart timeseries={timeseries} />
+    <main className="mx-auto max-w-3xl p-8">
+      <Link
+        href="/"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ChevronLeft className="size-3.5" />
+        Back to events
+      </Link>
+      <h1 className="mt-3 font-heading text-3xl font-semibold">
+        {timeseries.event.event_name}
+      </h1>
+      <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+        {timeseries.event.channel && (
+          <Badge className="rounded-full bg-primary/15 px-2.5 py-0.5 text-xs text-primary">
+            {timeseries.event.channel}
+          </Badge>
+        )}
+        {timeseries.event.capacity !== null && (
+          <span>Capacity {timeseries.event.capacity}</span>
+        )}
+        {startLabel && (
+          <>
+            <span className="text-border">·</span>
+            <span>Starts {startLabel}</span>
+          </>
+        )}
+      </div>
+      <div className="mt-6 rounded-lg border border-border bg-card p-5">
+        <EventChart timeseries={timeseries} />
+      </div>
     </main>
   );
 }
