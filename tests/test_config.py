@@ -26,9 +26,7 @@ def test_settings_from_env_defaults_frontend_origins_to_empty(monkeypatch):
 
 def test_settings_from_env_reads_frontend_redirect_url(monkeypatch):
     """FRONTEND_REDIRECT_URL configures where the SPA OAuth callback lands."""
-    monkeypatch.setenv(
-        "FRONTEND_REDIRECT_URL", "http://localhost:3000/auth/callback"
-    )
+    monkeypatch.setenv("FRONTEND_REDIRECT_URL", "http://localhost:3000/auth/callback")
 
     settings = config.Settings.from_env()
 

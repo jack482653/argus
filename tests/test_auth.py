@@ -191,9 +191,7 @@ async def test_api_me_returns_authenticated_email(dashboard_app):
     token = auth.issue_api_token("chester@example.com")
 
     transport = httpx.ASGITransport(app=dashboard_app)
-    async with httpx.AsyncClient(
-        transport=transport, base_url="http://test"
-    ) as client:
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get(
             "/dashboard/api/me", headers={"Authorization": f"Bearer {token}"}
         )
@@ -227,9 +225,7 @@ async def test_spa_oauth_callback_redirects_with_token_or_error(
             async with httpx.AsyncClient(
                 transport=transport, base_url="http://test"
             ) as client:
-                login = await client.get(
-                    "/dashboard/login/spa", follow_redirects=False
-                )
+                login = await client.get("/dashboard/login/spa", follow_redirects=False)
 
                 async with httpx.AsyncClient() as provider_client:
                     authorized = await provider_client.post(
