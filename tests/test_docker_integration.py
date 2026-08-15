@@ -138,6 +138,20 @@ def test_docker_image_serves_event_detail_page(api_url: str) -> None:
         assert "text/html" in response.headers["content-type"]
 
 
+def test_docker_image_serves_webhook_logs_page(api_url: str) -> None:
+    """The webhook-logs page is served at /dashboard/webhook-logs.
+
+    Like `/dashboard`, `/dashboard/webhook-logs` (no trailing slash)
+    307-redirects to `/dashboard/webhook-logs/` per Starlette's
+    `redirect_slashes` mount behavior, so the client here follows it just as
+    a browser would.
+    """
+    with httpx.Client(base_url=api_url, timeout=5, follow_redirects=True) as client:
+        response = client.get("/dashboard/webhook-logs")
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+
+
 def _start_postgresql(container: str, network: str) -> None:
     _run(
         [
