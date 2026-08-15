@@ -81,15 +81,26 @@ async def oauth_callback(request: Request):
     return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
 
 
+def _require_frontend_redirect_url() -> str:
+    """Return the configured SPA redirect target, or raise 503 if unset."""
+    frontend_url = config.settings.frontend_redirect_url
+    if not frontend_url:
+        raise HTTPException(
+            status_code=503, detail="frontend_redirect_url_not_configured"
+        )
+    return frontend_url
+
+
 @router.get("/dashboard/login/spa")
 async def login_spa(request: Request):
+    _require_frontend_redirect_url()
     redirect_uri = request.url_for("oauth_callback_spa")
     return await auth.get_oauth().google.authorize_redirect(request, str(redirect_uri))
 
 
 @router.get("/dashboard/oauth/callback/spa", name="oauth_callback_spa")
 async def oauth_callback_spa(request: Request):
-    frontend_url = config.settings.frontend_redirect_url
+    frontend_url = _require_frontend_redirect_url()
     try:
         email = await _exchange_google_email(request)
     except HTTPException:

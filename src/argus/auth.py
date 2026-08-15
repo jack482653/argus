@@ -1,6 +1,6 @@
 from authlib.integrations.starlette_client import OAuth
 from fastapi import HTTPException, Request, status
-from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+from itsdangerous import BadData, URLSafeTimedSerializer
 
 from argus import config
 
@@ -52,7 +52,7 @@ def verify_api_token(token: str) -> str | None:
     )
     try:
         data = serializer.loads(token, max_age=config.settings.auth_token_ttl_seconds)
-    except (BadSignature, SignatureExpired):
+    except BadData:
         return None
     if not isinstance(data, dict):
         return None
@@ -76,7 +76,7 @@ async def require_login(request: Request) -> str:
     SPA frontend).
     """
     auth_header = request.headers.get("authorization", "")
-    if auth_header.startswith(_BEARER_PREFIX):
+    if auth_header[: len(_BEARER_PREFIX)].lower() == _BEARER_PREFIX.lower():
         email = verify_api_token(auth_header[len(_BEARER_PREFIX) :])
         if email and is_email_allowed(email):
             return email

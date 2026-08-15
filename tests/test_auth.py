@@ -1,7 +1,7 @@
 from dataclasses import replace
 from urllib.parse import urlsplit
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from oidc_provider_mock import User, run_server_in_thread
 from starlette.middleware.sessions import SessionMiddleware
 import httpx
@@ -248,3 +248,72 @@ async def test_spa_oauth_callback_redirects_with_token_or_error(
                     assert location.endswith("?error=access_denied")
         finally:
             auth.reset_oauth()
+
+
+@pytest.mark.asyncio
+async def test_login_spa_returns_503_when_frontend_redirect_url_unset(
+    dashboard_app, monkeypatch
+):
+    """A misconfigured deployment fails closed with a clear 503, not a redirect loop."""
+    monkeypatch.setattr(
+        config, "settings", replace(config.settings, frontend_redirect_url="")
+    )
+
+    transport = httpx.ASGITransport(app=dashboard_app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/dashboard/login/spa")
+
+    assert response.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_spa_oauth_callback_returns_503_when_frontend_redirect_url_unset(
+    dashboard_app, monkeypatch
+):
+    """The callback also fails closed if hit directly with no configured target."""
+    monkeypatch.setattr(
+        config, "settings", replace(config.settings, frontend_redirect_url="")
+    )
+
+    transport = httpx.ASGITransport(app=dashboard_app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/dashboard/oauth/callback/spa")
+
+    assert response.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_spa_oauth_callback_redirects_with_oauth_exchange_error(
+    dashboard_app, monkeypatch
+):
+    """A Google token-exchange failure redirects to the frontend with an error, not a 500."""
+
+    async def fake_exchange(request):
+        raise HTTPException(status_code=400, detail="oauth_exchange_failed")
+
+    monkeypatch.setattr(router, "_exchange_google_email", fake_exchange)
+
+    transport = httpx.ASGITransport(app=dashboard_app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/dashboard/oauth/callback/spa", follow_redirects=False
+        )
+
+    assert response.status_code == 302
+    assert response.headers["location"] == (
+        "http://localhost:3000/auth/callback?error=oauth_exchange_failed"
+    )
+
+
+@pytest.mark.asyncio
+async def test_require_login_accepts_lowercase_bearer_scheme(dashboard_app):
+    """RFC 7235 auth-schemes are case-insensitive; accept `bearer` as well as `Bearer`."""
+    token = auth.issue_api_token("chester@example.com")
+
+    transport = httpx.ASGITransport(app=dashboard_app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/dashboard/api/events", headers={"Authorization": f"bearer {token}"}
+        )
+
+    assert response.status_code == 200
