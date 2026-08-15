@@ -128,9 +128,13 @@ def test_docker_image_serves_frontend_shell(api_url: str) -> None:
 def test_docker_image_serves_event_detail_page(api_url: str) -> None:
     """The event-detail page (query-string based) is served at /dashboard/events.
 
-    Like `/dashboard`, `/dashboard/events` (no trailing slash) 307-redirects to
-    `/dashboard/events/` per Starlette's `redirect_slashes` mount behavior, so
-    the client here follows it just as a browser would.
+    Unlike `/dashboard` itself, `/dashboard/events` (no trailing slash)
+    307-redirects to `/dashboard/events/` via `StaticFiles`' own
+    directory-index redirect behavior — it resolves "events" to a directory
+    within the mount and redirects to add the trailing slash before serving
+    its `index.html`. This is a related but distinct mechanism from `Mount`'s
+    `redirect_slashes`, which only applies to the bare mount path itself. The
+    client here follows the redirect just as a browser would.
     """
     with httpx.Client(base_url=api_url, timeout=5, follow_redirects=True) as client:
         response = client.get("/dashboard/events", params={"slug": "anything"})
@@ -141,10 +145,14 @@ def test_docker_image_serves_event_detail_page(api_url: str) -> None:
 def test_docker_image_serves_webhook_logs_page(api_url: str) -> None:
     """The webhook-logs page is served at /dashboard/webhook-logs.
 
-    Like `/dashboard`, `/dashboard/webhook-logs` (no trailing slash)
-    307-redirects to `/dashboard/webhook-logs/` per Starlette's
-    `redirect_slashes` mount behavior, so the client here follows it just as
-    a browser would.
+    Unlike `/dashboard` itself, `/dashboard/webhook-logs` (no trailing slash)
+    307-redirects to `/dashboard/webhook-logs/` via `StaticFiles`' own
+    directory-index redirect behavior — it resolves "webhook-logs" to a
+    directory within the mount and redirects to add the trailing slash
+    before serving its `index.html`. This is a related but distinct
+    mechanism from `Mount`'s `redirect_slashes`, which only applies to the
+    bare mount path itself. The client here follows the redirect just as a
+    browser would.
     """
     with httpx.Client(base_url=api_url, timeout=5, follow_redirects=True) as client:
         response = client.get("/dashboard/webhook-logs")

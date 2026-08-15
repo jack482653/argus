@@ -5,7 +5,7 @@ import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from argus import auth, config
@@ -14,6 +14,7 @@ from argus.kktix.report import send_report
 
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
+_EVENTS_STATIC_DIR = Path(__file__).parent / "frontend" / "events"
 _UTC = ZoneInfo("UTC")
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
@@ -80,6 +81,16 @@ async def logout(request: Request):
 
 @router.get("/dashboard/events/{slug}")
 async def dashboard_event(slug: str, request: Request):
+    # Next's static export emits internal client-navigation payload files
+    # (index.txt, __next._tree.txt, ...) under this same /dashboard/events/*
+    # prefix, and this route (registered before the StaticFiles mount in
+    # main.py) would otherwise swallow them as spurious event-slug lookups.
+    # Serve the real static file directly if the "slug" actually corresponds
+    # to one, before falling through to the legacy Jinja2/session logic.
+    static_file = _EVENTS_STATIC_DIR / slug
+    if static_file.is_file():
+        return FileResponse(static_file)
+
     result = _session_email_or_redirect(request)
     if isinstance(result, RedirectResponse):
         return result

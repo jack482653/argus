@@ -134,3 +134,108 @@ async def test_api_me_returns_authenticated_email(dashboard_app, monkeypatch):
                 assert me.json() == {"email": email}
         finally:
             auth.reset_oauth()
+
+
+@pytest.mark.asyncio
+async def test_dashboard_event_serves_static_file_when_slug_matches_one(
+    dashboard_app, monkeypatch, tmp_path
+):
+    """Next's static-export payload files (e.g. index.txt) live under the same
+    /dashboard/events/* prefix as the legacy {slug} route. When the requested
+    "slug" actually corresponds to a real file on disk, it must be served
+    directly instead of being treated as an event-slug DB lookup.
+    """
+    static_dir = tmp_path / "events"
+    static_dir.mkdir()
+    (static_dir / "index.txt").write_text("1:HL_JS\n")
+    monkeypatch.setattr(router, "_EVENTS_STATIC_DIR", static_dir)
+
+    transport = httpx.ASGITransport(app=dashboard_app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/dashboard/events/index.txt", follow_redirects=False
+        )
+
+        assert response.status_code == 200
+        assert response.text == "1:HL_JS\n"
+
+
+@pytest.mark.asyncio
+async def test_dashboard_event_still_renders_for_real_event_slug(
+    dashboard_app, monkeypatch, tmp_path
+):
+    """The legacy Jinja2 per-event page still works end-to-end for an
+    authenticated user when the slug does NOT correspond to a static file.
+    """
+    # Ensure _EVENTS_STATIC_DIR points at an existing-but-empty directory, so
+    # `.is_file()` reliably returns False without depending on a real build.
+    static_dir = tmp_path / "events"
+    static_dir.mkdir()
+    monkeypatch.setattr(router, "_EVENTS_STATIC_DIR", static_dir)
+    monkeypatch.setattr(
+        router.queries,
+        "get_event",
+        lambda slug: {
+            "event_slug": slug,
+            "event_name": "Test Event",
+            "channel": "SPRINT",
+            "start_at": None,
+            "capacity": None,
+        },
+    )
+
+    email = "chester@example.com"
+    with run_server_in_thread(
+        user_claims=[User(sub=email, claims={"email": email})]
+    ) as server:
+        provider_url = f"http://localhost:{server.server_port}"
+        monkeypatch.setattr(
+            auth,
+            "_GOOGLE_SERVER_METADATA_URL",
+            f"{provider_url}/.well-known/openid-configuration",
+        )
+        auth.reset_oauth()
+
+        try:
+            transport = httpx.ASGITransport(app=dashboard_app)
+            async with httpx.AsyncClient(
+                transport=transport, base_url="http://test"
+            ) as client:
+                login = await client.get("/dashboard/login", follow_redirects=False)
+
+                async with httpx.AsyncClient() as provider_client:
+                    authorized = await provider_client.post(
+                        login.headers["location"], data={"sub": email}
+                    )
+
+                callback = urlsplit(authorized.headers["location"])
+                await client.get(
+                    f"{callback.path}?{callback.query}", follow_redirects=False
+                )
+
+                response = await client.get("/dashboard/events/test-event")
+                assert response.status_code == 200
+                assert "Test Event" in response.text
+        finally:
+            auth.reset_oauth()
+
+
+@pytest.mark.asyncio
+async def test_dashboard_event_redirects_unauthenticated_request_to_login(
+    dashboard_app, monkeypatch, tmp_path
+):
+    """An unauthenticated request to a real (non-static-file) event slug still
+    redirects to the login page — existing legacy-route behavior.
+    """
+    static_dir = tmp_path / "events"
+    static_dir.mkdir()
+    monkeypatch.setattr(router, "_EVENTS_STATIC_DIR", static_dir)
+
+    transport = httpx.ASGITransport(app=dashboard_app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/dashboard/events/test-event", follow_redirects=False
+        )
+
+        assert response.status_code == 302
+        assert response.headers["location"] == "/dashboard/login"
