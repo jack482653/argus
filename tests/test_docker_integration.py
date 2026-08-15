@@ -6,7 +6,7 @@ import socket
 import subprocess
 import time
 
-from itsdangerous import TimestampSigner
+from itsdangerous import TimestampSigner, URLSafeTimedSerializer
 import httpx
 import pytest
 
@@ -20,6 +20,8 @@ _APP_ENV = {
     "DISCORD_WEBHOOK_SMOKE": "https://example.com/discord-webhook",
     "ALLOWED_EMAILS": _EMAIL,
     "KKTIX_ORGANIZATION": "",
+    "FRONTEND_ORIGINS": "http://localhost:3000",
+    "FRONTEND_REDIRECT_URL": "http://localhost:3000/auth/callback",
 }
 _WEBHOOK_BODY = {
     "notifications": [
@@ -111,6 +113,35 @@ def test_docker_image_api_flow(api_url: str) -> None:
         assert client.get("/dashboard/api/events").json() == []
 
 
+def test_docker_image_cors_and_bearer_token_auth(api_url: str) -> None:
+    """Verify CORS headers and SPA Bearer-token auth through the built image."""
+    token = _api_token(_EMAIL)
+    with httpx.Client(base_url=api_url, timeout=5) as client:
+        allowed_origin = client.get(
+            "/dashboard/api/me",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Origin": "http://localhost:3000",
+            },
+        )
+        assert allowed_origin.status_code == 200
+        assert allowed_origin.json() == {"email": _EMAIL}
+        assert (
+            allowed_origin.headers["access-control-allow-origin"]
+            == "http://localhost:3000"
+        )
+
+        disallowed_origin = client.get(
+            "/dashboard/api/me",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Origin": "https://not-allowed.example.com",
+            },
+        )
+        assert disallowed_origin.status_code == 200
+        assert "access-control-allow-origin" not in disallowed_origin.headers
+
+
 def _start_postgresql(container: str, network: str) -> None:
     _run(
         [
@@ -173,6 +204,12 @@ def _app_command(
 def _session_cookie(email: str) -> str:
     data = b64encode(json.dumps({"user": {"email": email}}).encode("utf-8"))
     return TimestampSigner(_SESSION_SECRET).sign(data).decode("utf-8")
+
+
+def _api_token(email: str) -> str:
+    return URLSafeTimedSerializer(_SESSION_SECRET, salt="argus-spa-api-token").dumps(
+        {"email": email}
+    )
 
 
 def _get_free_port() -> int:

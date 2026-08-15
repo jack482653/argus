@@ -4,6 +4,7 @@ import os
 
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
+from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from argus import config
@@ -57,6 +58,14 @@ app.add_middleware(
     same_site="lax",
     https_only=os.getenv("ARGUS_HTTPS_ONLY", "0") == "1",
 )
+
+if config.settings.frontend_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(config.settings.frontend_origins),
+        allow_methods=["GET", "POST", "DELETE"],
+        allow_headers=["Authorization", "Content-Type"],
+    )
 
 app.include_router(kktix_router)
 app.include_router(dashboard_router)
