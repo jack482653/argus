@@ -18,7 +18,7 @@ export default function WebhookLogsPage() {
   const [isPending, startTransition] = useTransition();
 
   const reload = () => {
-    listWebhookLogs(PAGE_SIZE, offset).then(setPage);
+    return listWebhookLogs(PAGE_SIZE, offset).then(setPage);
   };
 
   useEffect(() => {
@@ -34,14 +34,14 @@ export default function WebhookLogsPage() {
   const handleDelete = (id: number) => {
     startTransition(async () => {
       await deleteWebhookLog(id);
-      reload();
+      await reload();
     });
   };
 
   const handleClearAll = () => {
     startTransition(async () => {
       await clearWebhookLogs();
-      reload();
+      await reload();
     });
   };
 
