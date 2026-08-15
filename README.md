@@ -79,7 +79,9 @@ A Google-OAuth-protected web UI for viewing per-event registration time series.
 2. Create an **OAuth 2.0 Client ID** (Application type: **Web application**).
 3. Under **Authorized redirect URIs**, add:
    - `http://localhost:8000/dashboard/oauth/callback` (for local dev)
+   - `http://localhost:8000/dashboard/oauth/callback/spa` (for local dev, separated SPA frontend)
    - `https://<your-deploy-domain>/dashboard/oauth/callback` (for production)
+   - `https://<your-deploy-domain>/dashboard/oauth/callback/spa` (for production, separated SPA frontend)
 4. Copy the **Client ID** and **Client secret** into `.env` as `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`.
 5. Generate a session secret:
    ```bash

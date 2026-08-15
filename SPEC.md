@@ -59,18 +59,18 @@ Argus uses a **vertical slice** layout: each feature owns its full stack (HTTP r
 | `GET` | `/dashboard` | session (HTML) | Event list page | [Dashboard](#dashboard) |
 | `GET` | `/dashboard/events/{slug}` | session (HTML) | Per-event chart page | [Dashboard](#dashboard) |
 | `GET` | `/dashboard/webhook-logs` | session (HTML) | Webhook log viewer page | [Dashboard](#dashboard) |
-| `GET` | `/dashboard/api/events` | session (401) | JSON: event list | [Dashboard](#dashboard) |
-| `GET` | `/dashboard/api/events/{slug}/timeseries` | session (401) | JSON: per-event time series | [Dashboard](#dashboard) |
-| `DELETE` | `/dashboard/api/events/{slug}` | session (401) | Permanently delete event + its tickets | [Dashboard](#dashboard) |
-| `GET` | `/dashboard/api/webhook-logs` | session (401) | JSON: paginated webhook log entries | [Dashboard](#dashboard) |
-| `DELETE` | `/dashboard/api/webhook-logs/{id}` | session (401) | Delete a single webhook log entry | [Dashboard](#dashboard) |
-| `DELETE` | `/dashboard/api/webhook-logs` | session (401) | Clear all webhook log entries | [Dashboard](#dashboard) |
-| `POST` | `/dashboard/api/report/trigger` | session (401) | Run the daily Discord report immediately | [Dashboard](#dashboard) |
+| `GET` | `/dashboard/api/events` | session or Bearer (401) | JSON: event list | [Dashboard](#dashboard) |
+| `GET` | `/dashboard/api/events/{slug}/timeseries` | session or Bearer (401) | JSON: per-event time series | [Dashboard](#dashboard) |
+| `DELETE` | `/dashboard/api/events/{slug}` | session or Bearer (401) | Permanently delete event + its tickets | [Dashboard](#dashboard) |
+| `GET` | `/dashboard/api/webhook-logs` | session or Bearer (401) | JSON: paginated webhook log entries | [Dashboard](#dashboard) |
+| `DELETE` | `/dashboard/api/webhook-logs/{id}` | session or Bearer (401) | Delete a single webhook log entry | [Dashboard](#dashboard) |
+| `DELETE` | `/dashboard/api/webhook-logs` | session or Bearer (401) | Clear all webhook log entries | [Dashboard](#dashboard) |
+| `POST` | `/dashboard/api/report/trigger` | session or Bearer (401) | Run the daily Discord report immediately | [Dashboard](#dashboard) |
 
 **Auth column legend:**
 - `x-kktix-secret header` — request must include header matching `WEBHOOK_SECRET` (constant-time compared)
 - `session (HTML)` — protected by signed session cookie; missing/invalid → 302 to `/dashboard/login`
-- `session (401)` — same protection but JSON routes return 401 instead of redirecting
+- `session or Bearer (401)` — protected by `require_login`, which accepts either the signed session cookie or an `Authorization: Bearer <token>` header; missing/invalid → 401 instead of redirecting
 
 ---
 
@@ -397,7 +397,7 @@ A web UI that visualizes registration trends per event over time. Implemented as
 
 ### Routes
 
-See [API Reference](#api-reference) for the canonical list. All routes under `/dashboard/*` (except `login` and `oauth/callback`) require an authenticated session. HTML routes redirect to `/dashboard/login` on failure; JSON API routes return `401`.
+See [API Reference](#api-reference) for the canonical list. All routes under `/dashboard/*` (except `login`, `oauth/callback`, `login/spa`, and `oauth/callback/spa`) require an authenticated session (or, for JSON API routes, a Bearer token). HTML routes redirect to `/dashboard/login` on failure; JSON API routes return `401`.
 
 ### Authentication
 
@@ -423,7 +423,9 @@ Instead it uses a stateless Bearer token:
 
 1. Frontend navigates the browser to `/dashboard/login/spa`.
 2. Backend completes the Google OAuth flow exactly as above, but at
-   `/dashboard/oauth/callback/spa`.
+   `/dashboard/oauth/callback/spa`. This path must also be registered as an
+   Authorized redirect URI in Google Cloud Console, alongside the legacy
+   `/dashboard/oauth/callback` (see [One-time Google OAuth setup](README.md#one-time-google-oauth-setup)).
 3. On success, backend redirects to `{FRONTEND_REDIRECT_URL}#token=<token>`.
    The token is a `URLSafeTimedSerializer`-signed payload (signed with
    `SESSION_SECRET`, same secret as the session cookie), valid for
@@ -431,14 +433,25 @@ Instead it uses a stateless Bearer token:
    `{FRONTEND_REDIRECT_URL}?error=oauth_exchange_failed` or `?error=access_denied`.
 4. Frontend reads the token from the URL fragment (never sent to any server —
    not even the backend's own access logs), stores it client-side, and sends
-   it as `Authorization: Bearer <token>` on every subsequent API call.
+   it as `Authorization: Bearer <token>` on every subsequent API call. The
+   frontend should strip the fragment from the URL after reading it (e.g. via
+   `history.replaceState`) so the token doesn't linger in browser history.
 5. `GET /dashboard/api/me` returns the authenticated email — used by the
    frontend to bootstrap/validate its session on load.
 
 Logout is client-side only (discard the token); there is no server-side
-revocation before expiry. All `/dashboard/api/*` routes accept either this
-Bearer token or the legacy session cookie via the same `require_login`
-dependency — no route-specific auth logic.
+revocation before expiry. However, removing an address from `ALLOWED_EMAILS`
+takes effect immediately for outstanding tokens too: `require_login`
+re-checks the allowlist on every request, not just at token-mint time, so a
+revoked email's existing tokens stop working as soon as the config changes.
+All `/dashboard/api/*` routes accept either this Bearer token or the legacy
+session cookie via the same `require_login` dependency — no route-specific
+auth logic.
+
+The token is signed (tamper-evident) but not encrypted: its payload,
+including the email address, is base64-encoded plaintext and trivially
+readable by anyone who has the token. Treat it as a bearer credential, not as
+a container for secret data.
 
 CORS is enabled only for origins listed in `FRONTEND_ORIGINS`; requests from
 any other origin do not receive `Access-Control-Allow-Origin` and are blocked
@@ -521,8 +534,9 @@ Single Jinja2 template per page; charts rendered client-side with Chart.js (CDN,
 | `SESSION_SECRET` | Yes | Random ≥32-byte hex string for signing session cookies |
 | `ALLOWED_EMAILS` | Yes | Comma-separated allowlist, e.g. `alice@example.com,bob@example.com` |
 
-Google OAuth redirect URI to register in Google Cloud Console:
-`https://<your-domain>/dashboard/oauth/callback`
+Google OAuth redirect URIs to register in Google Cloud Console:
+`https://<your-domain>/dashboard/oauth/callback` and
+`https://<your-domain>/dashboard/oauth/callback/spa`
 
 ### Dependencies (additions)
 
