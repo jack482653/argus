@@ -116,6 +116,11 @@ async def dashboard_event(slug: str, request: Request):
 # Protected by `Depends(auth.require_login)`. Returns 401 if not authenticated.
 
 
+@router.get("/dashboard/api/me")
+async def api_me(email: str = Depends(auth.require_login)):
+    return {"email": email}
+
+
 @router.get("/dashboard/api/events")
 async def api_events(_email: str = Depends(auth.require_login)):
     return queries.list_events()

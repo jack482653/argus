@@ -179,3 +179,20 @@ async def test_require_login_rejects_garbage_bearer_token(dashboard_app):
         )
 
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_api_me_returns_authenticated_email(dashboard_app):
+    """The SPA frontend can look up who is currently logged in via a token."""
+    token = auth.issue_api_token("chester@example.com")
+
+    transport = httpx.ASGITransport(app=dashboard_app)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://test"
+    ) as client:
+        response = await client.get(
+            "/dashboard/api/me", headers={"Authorization": f"Bearer {token}"}
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"email": "chester@example.com"}
