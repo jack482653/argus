@@ -14,3 +14,6 @@ dist/
 .claude/
 CLAUDE.md
 AGENTS.md
+
+# Built frontend, copied into the backend package at build time
+src/argus/dashboard/frontend/

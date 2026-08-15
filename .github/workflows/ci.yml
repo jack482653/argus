@@ -62,6 +62,13 @@ jobs:
         working-directory: frontend
         run: pnpm lint
 
+      # Scoped to the "unit" vitest project only — the Storybook/Playwright
+      # browser-based component tests require installing a browser and are
+      # deliberately left as a local-only check for now.
+      - name: Test
+        working-directory: frontend
+        run: pnpm test
+
       - name: Build
         working-directory: frontend
         run: pnpm build

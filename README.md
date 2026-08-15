@@ -87,8 +87,11 @@ A Google-OAuth-protected web UI for viewing per-event registration time series.
 
 ### Try it locally
 
+The dashboard UI is a Next.js app (`frontend/`) built to static files and served same-origin by the backend. `uvicorn` alone won't serve it in a fresh checkout — build the frontend first (or use the `next dev` proxy workflow), see [Development](#development) below.
+
 ```bash
 set -a && source .env && set +a
+cd frontend && pnpm install && pnpm build && cd ..   # one-time (or after frontend changes)
 uv run uvicorn argus.main:app --host 0.0.0.0 --port 8000
 # open http://localhost:8000/dashboard
 ```
@@ -100,6 +103,7 @@ You will be redirected to Google to sign in. Only emails in `ALLOWED_EMAILS` are
 When deploying (e.g. to Railway):
 
 - **Railway builds the Dockerfile** using `python:3.12-slim-bookworm`, installs the package with `pip install .`, and starts uvicorn via `railway.json` `startCommand`. Railway injects `$PORT` and the start command binds to it.
+- **The frontend build is automatic** — the Dockerfile's first stage builds `frontend/` (`pnpm install && pnpm build`) and copies its static export into `src/argus/dashboard/frontend/` before the Python stage installs the package. No manual frontend build step is needed for Docker/Railway deploys.
 - **For SQLite, mount a persistent volume** at `/data` and set `DATABASE_URL=sqlite:////data/argus.db`. SQLite written to the container's local filesystem will be wiped on every redeploy.
 - **`SESSION_SECRET` is required** — the app refuses to boot without it. Generate with `python -c "import secrets; print(secrets.token_hex(32))"`.
 - **Port:** the Dockerfile's `CMD` binds to a fixed port 8000. Railway overrides this via `railway.json`'s `startCommand`, which substitutes its injected `$PORT`. To change the port in non-Railway environments, override the container command (e.g. `docker run … argus-image uvicorn argus.main:app --host 0.0.0.0 --port 9000`).
@@ -124,3 +128,27 @@ uv run ruff format src tests      # format
 # Visual inspection of Discord report (sends a real webhook):
 ARGUS_MANUAL_TEST=1 uv run pytest tests/test_discord_format_manual.py -v -s
 ```
+
+### Frontend (`frontend/`)
+
+The dashboard UI lives in `frontend/` — a Next.js app using `pnpm` (not `npm`), statically exported (`next build`) into `src/argus/dashboard/frontend/`, and served same-origin by the backend under `/dashboard` (no separate frontend server or CORS setup in production). This copy step happens automatically in Docker's multi-stage build; locally you have two options:
+
+1. **Build once, run `uvicorn` normally** — full same-origin experience, matches production:
+   ```bash
+   cd frontend && pnpm install && pnpm build && cd ..
+   uv run uvicorn argus.main:app --host 0.0.0.0 --port 8000
+   # open http://localhost:8000/dashboard
+   ```
+   Re-run `pnpm build` after frontend changes to see them.
+
+2. **`next dev` + dev proxy** — for active frontend development with hot reload, run both processes side by side:
+   ```bash
+   # terminal 1
+   uv run uvicorn argus.main:app --host 0.0.0.0 --port 8000
+   # terminal 2
+   cd frontend && pnpm install && pnpm dev
+   # open http://localhost:3000/dashboard
+   ```
+   `frontend/next.config.ts` proxies `/dashboard/api/*` calls from the `next dev` server (port 3000) to `uvicorn` (port 8000), so no CORS configuration is needed.
+
+Other frontend commands (run from `frontend/`): `pnpm lint`, `pnpm test` (vitest unit/component tests), `pnpm exec tsc --noEmit`.
