@@ -1,5 +1,6 @@
 from authlib.integrations.starlette_client import OAuth
 from fastapi import HTTPException, Request, status
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 from argus import config
 
@@ -31,6 +32,31 @@ def reset_oauth() -> None:
     """For tests."""
     global _oauth
     _oauth = None
+
+
+_API_TOKEN_SALT = "argus-spa-api-token"
+
+
+def issue_api_token(email: str) -> str:
+    """Mint a signed, time-limited API token for the separated SPA frontend."""
+    serializer = URLSafeTimedSerializer(
+        config.secrets.require_session_secret(), salt=_API_TOKEN_SALT
+    )
+    return serializer.dumps({"email": email})
+
+
+def verify_api_token(token: str) -> str | None:
+    """Verify a signed API token and return its email, or None if invalid/expired."""
+    serializer = URLSafeTimedSerializer(
+        config.secrets.require_session_secret(), salt=_API_TOKEN_SALT
+    )
+    try:
+        data = serializer.loads(token, max_age=config.settings.auth_token_ttl_seconds)
+    except (BadSignature, SignatureExpired):
+        return None
+    if not isinstance(data, dict):
+        return None
+    return data.get("email")
 
 
 def is_email_allowed(email: str) -> bool:

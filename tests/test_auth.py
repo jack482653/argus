@@ -45,6 +45,51 @@ def test_is_email_allowed_matches_allowlist_case_insensitively(monkeypatch):
     assert auth.is_email_allowed("") is False
 
 
+def test_issue_api_token_round_trips_email(monkeypatch):
+    """A freshly minted token verifies back to the same email."""
+    monkeypatch.setattr(
+        config, "secrets", replace(config.secrets, session_secret="s3cr3t")
+    )
+
+    token = auth.issue_api_token("chester@example.com")
+
+    assert auth.verify_api_token(token) == "chester@example.com"
+
+
+def test_verify_api_token_rejects_tampered_token(monkeypatch):
+    """A modified token fails signature verification."""
+    monkeypatch.setattr(
+        config, "secrets", replace(config.secrets, session_secret="s3cr3t")
+    )
+    token = auth.issue_api_token("chester@example.com")
+
+    assert auth.verify_api_token(token + "tampered") is None
+
+
+def test_verify_api_token_rejects_expired_token(monkeypatch):
+    """A token older than AUTH_TOKEN_TTL_SECONDS is rejected."""
+    monkeypatch.setattr(
+        config, "secrets", replace(config.secrets, session_secret="s3cr3t")
+    )
+    token = auth.issue_api_token("chester@example.com")
+    # A negative TTL makes every token's age exceed max_age immediately —
+    # no need to sleep in the test.
+    monkeypatch.setattr(
+        config, "settings", replace(config.settings, auth_token_ttl_seconds=-1)
+    )
+
+    assert auth.verify_api_token(token) is None
+
+
+def test_verify_api_token_rejects_garbage_input(monkeypatch):
+    """A string that isn't a signed token at all is rejected, not raised."""
+    monkeypatch.setattr(
+        config, "secrets", replace(config.secrets, session_secret="s3cr3t")
+    )
+
+    assert auth.verify_api_token("not-a-real-token") is None
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("email", "expected_status"),
