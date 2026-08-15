@@ -68,7 +68,9 @@ _FRONTEND_DIR = Path(__file__).parent / "dashboard" / "frontend"
 
 if _FRONTEND_DIR.is_dir():
     app.mount(
-        "/dashboard", StaticFiles(directory=_FRONTEND_DIR, html=True), name="dashboard-frontend"
+        "/dashboard",
+        StaticFiles(directory=_FRONTEND_DIR, html=True),
+        name="dashboard-frontend",
     )
 
 
