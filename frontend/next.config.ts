@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "export",
+  basePath: "/dashboard",
+  trailingSlash: true,
   // next/image's default loader needs a server; serve images as-is instead.
   images: {
     unoptimized: true,

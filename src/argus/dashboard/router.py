@@ -78,18 +78,6 @@ async def logout(request: Request):
     return RedirectResponse(url="/dashboard/login", status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/dashboard")
-async def dashboard_home(request: Request):
-    result = _session_email_or_redirect(request)
-    if isinstance(result, RedirectResponse):
-        return result
-    return templates.TemplateResponse(
-        request=request,
-        name="index.html",
-        context={"events": queries.list_events(), "user_email": result},
-    )
-
-
 @router.get("/dashboard/events/{slug}")
 async def dashboard_event(slug: str, request: Request):
     result = _session_email_or_redirect(request)
@@ -132,21 +120,6 @@ async def api_event_timeseries(slug: str, _email: str = Depends(auth.require_log
     if result is None:
         raise HTTPException(status_code=404, detail="event_not_found")
     return result
-
-
-@router.get("/dashboard/webhook-logs")
-async def dashboard_webhook_logs(request: Request):
-    result = _session_email_or_redirect(request)
-    if isinstance(result, RedirectResponse):
-        return result
-    return templates.TemplateResponse(
-        request=request,
-        name="webhook_logs.html",
-        context={
-            "user_email": result,
-            "total": queries.count_webhook_logs(),
-        },
-    )
 
 
 @router.get("/dashboard/api/webhook-logs")

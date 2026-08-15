@@ -111,6 +111,20 @@ def test_docker_image_api_flow(api_url: str) -> None:
         assert client.get("/dashboard/api/events").json() == []
 
 
+def test_docker_image_serves_frontend_shell(api_url: str) -> None:
+    """The built static frontend is served at /dashboard, same-origin.
+
+    `/dashboard` (no trailing slash) 307-redirects to `/dashboard/` — that's
+    Starlette's standard `redirect_slashes` behavior for a mount whose static
+    export uses Next's `trailingSlash: true`, and any browser follows it
+    transparently, so the client here does too.
+    """
+    with httpx.Client(base_url=api_url, timeout=5, follow_redirects=True) as client:
+        response = client.get("/dashboard")
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+
+
 def _start_postgresql(container: str, network: str) -> None:
     _run(
         [
