@@ -34,7 +34,14 @@ describe("useRequireAuth", () => {
 
     renderHook(() => useRequireAuth());
 
-    await waitFor(() => expect(window.location.href).toBe("/dashboard/login"));
+    // In production this is a bare "/dashboard/login" (same-origin); in dev
+    // it's prefixed with the backend's own origin (see
+    // configurations/backend.ts) since next dev/uvicorn are different
+    // origins — assert on the path, not the exact origin prefix, so this
+    // test doesn't depend on which environment it happens to run under.
+    await waitFor(() =>
+      expect(window.location.href).toMatch(/\/dashboard\/login$/),
+    );
   });
 
   it("returns an error state when getCurrentUser rejects", async () => {

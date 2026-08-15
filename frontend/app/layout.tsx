@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono, Inter, Playfair_Display } from "next/font/google";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { BACKEND_ORIGIN } from "@/configurations/backend";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
@@ -46,7 +47,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             Argus
           </Link>
           <Link href="/webhook-logs">Webhook Logs</Link>
-          <a href="/dashboard/logout" className="ml-auto text-muted-foreground">
+          <a
+            href={`${BACKEND_ORIGIN}/dashboard/logout`}
+            className="ml-auto text-muted-foreground"
+          >
             Logout
           </a>
         </nav>

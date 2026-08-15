@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getCurrentUser } from "@/apis/auth";
+import { BACKEND_ORIGIN } from "@/configurations/backend";
 import type { CurrentUser } from "@/types/responses/auth";
 
 type AuthState =
@@ -23,7 +24,7 @@ export function useRequireAuth(): AuthState {
           setState({ status: "authenticated", user });
         } else {
           setState({ status: "unauthenticated" });
-          window.location.href = "/dashboard/login";
+          window.location.href = `${BACKEND_ORIGIN}/dashboard/login`;
         }
       })
       .catch((error: unknown) => {
