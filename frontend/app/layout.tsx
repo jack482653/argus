@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono, Inter, Playfair_Display } from "next/font/google";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { cn } from "@/lib/utils";
 import "./globals.css";
@@ -39,7 +40,18 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         playfairDisplayHeading.variable,
       )}
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <nav className="flex items-center gap-4 border-b p-4 text-sm">
+          <Link href="/" className="font-heading text-base">
+            Argus
+          </Link>
+          <Link href="/webhook-logs">Webhook Logs</Link>
+          <a href="/dashboard/logout" className="ml-auto text-muted-foreground">
+            Logout
+          </a>
+        </nav>
+        {children}
+      </body>
     </html>
   );
 }

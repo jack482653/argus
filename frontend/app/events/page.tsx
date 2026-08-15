@@ -12,24 +12,45 @@ function EventDetailContent() {
   const searchParams = useSearchParams();
   const slug = searchParams.get("slug");
   const [timeseries, setTimeseries] = useState<EventTimeseries | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (auth.status !== "authenticated" || !slug) return;
     let cancelled = false;
-    getEventTimeseries(slug).then((result) => {
-      if (!cancelled) setTimeseries(result);
-    });
+    getEventTimeseries(slug)
+      .then((result) => {
+        if (!cancelled) setTimeseries(result);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : "Failed to load event data",
+          );
+        }
+      });
     return () => {
       cancelled = true;
     };
   }, [auth.status, slug]);
 
+  if (auth.status === "loading") {
+    return null;
+  }
+  if (auth.status === "error") {
+    return (
+      <p className="p-6 text-destructive">Failed to load: {auth.message}</p>
+    );
+  }
   if (auth.status !== "authenticated") {
     return null;
   }
 
   if (!slug) {
     return <p className="p-6">No event selected.</p>;
+  }
+
+  if (error) {
+    return <p className="p-6 text-destructive">{error}</p>;
   }
 
   if (!timeseries) {

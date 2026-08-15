@@ -37,16 +37,21 @@ export function EventChart({ timeseries }: EventChartProps) {
     const point: Record<string, string | number> = { label };
     const index = timeseries.labels.indexOf(label);
     if (index !== -1) {
-      for (const dataset of timeseries.datasets) {
-        point[dataset.name] = dataset.data[index];
-      }
+      timeseries.datasets.forEach((dataset, datasetIndex) => {
+        point[`series-${datasetIndex}`] = dataset.data[index];
+      });
     }
     return point;
   });
 
+  // Ticket-type names come from arbitrary KKTIX strings (spaces, parens,
+  // etc.) and are unsafe to interpolate directly into a CSS custom-property
+  // name (`var(--color-${name})`) or a Recharts dataKey — key everything by
+  // index instead. `dataset.name` is still used as the human-readable
+  // `label` (shown in the tooltip) and for the `strokeWidth` check below.
   const config: ChartConfig = Object.fromEntries(
     timeseries.datasets.map((dataset, index) => [
-      dataset.name,
+      `series-${index}`,
       { label: dataset.name, color: `var(--chart-${(index % 5) + 1})` },
     ]),
   );
@@ -73,11 +78,11 @@ export function EventChart({ timeseries }: EventChartProps) {
             label="Event start"
           />
         )}
-        {timeseries.datasets.map((dataset) => (
+        {timeseries.datasets.map((dataset, index) => (
           <Line
-            key={dataset.name}
-            dataKey={dataset.name}
-            stroke={`var(--color-${dataset.name})`}
+            key={`series-${index}`}
+            dataKey={`series-${index}`}
+            stroke={`var(--color-series-${index})`}
             strokeWidth={dataset.name === "Total" ? 2 : 1}
             dot={false}
             connectNulls

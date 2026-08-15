@@ -15,10 +15,15 @@ export default function WebhookLogsPage() {
   const auth = useRequireAuth();
   const [offset, setOffset] = useState(0);
   const [page, setPage] = useState<WebhookLogsPage | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const reload = () => {
-    return listWebhookLogs(PAGE_SIZE, offset).then(setPage);
+    return listWebhookLogs(PAGE_SIZE, offset)
+      .then(setPage)
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : "Failed to load logs");
+      });
   };
 
   useEffect(() => {
@@ -27,6 +32,14 @@ export default function WebhookLogsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.status, offset]);
 
+  if (auth.status === "loading") {
+    return null;
+  }
+  if (auth.status === "error") {
+    return (
+      <p className="p-6 text-destructive">Failed to load: {auth.message}</p>
+    );
+  }
   if (auth.status !== "authenticated") {
     return null;
   }
@@ -39,9 +52,26 @@ export default function WebhookLogsPage() {
   };
 
   const handleClearAll = () => {
+    if (
+      !window.confirm(
+        `Clear ALL ${page?.total ?? 0} webhook logs? This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
     startTransition(async () => {
       await clearWebhookLogs();
-      await reload();
+      setOffset(0);
+      // Fetch page 0 directly rather than calling reload() here — reload()'s
+      // closure was created with the OLD offset value at render time, and
+      // setOffset(0) above doesn't take effect until the next render, so
+      // calling reload() synchronously in this same handler would still
+      // request the stale offset.
+      await listWebhookLogs(PAGE_SIZE, 0)
+        .then(setPage)
+        .catch((err: unknown) => {
+          setError(err instanceof Error ? err.message : "Failed to load logs");
+        });
     });
   };
 
@@ -58,7 +88,8 @@ export default function WebhookLogsPage() {
           Clear all
         </button>
       </div>
-      {page === null && <p className="mt-4">Loading…</p>}
+      {error && <p className="mt-4 text-destructive">{error}</p>}
+      {page === null && !error && <p className="mt-4">Loading…</p>}
       {page && (
         <>
           <table className="mt-4 w-full text-left text-sm">

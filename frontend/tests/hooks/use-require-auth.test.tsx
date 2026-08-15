@@ -36,4 +36,19 @@ describe("useRequireAuth", () => {
 
     await waitFor(() => expect(window.location.href).toBe("/dashboard/login"));
   });
+
+  it("returns an error state when getCurrentUser rejects", async () => {
+    vi.spyOn(authApi, "getCurrentUser").mockRejectedValue(
+      new Error("network down"),
+    );
+
+    const { result } = renderHook(() => useRequireAuth());
+
+    await waitFor(() =>
+      expect(result.current).toEqual({
+        status: "error",
+        message: "network down",
+      }),
+    );
+  });
 });

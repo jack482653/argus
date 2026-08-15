@@ -18,3 +18,7 @@ export async function getEventTimeseries(
 export async function deleteEvent(slug: string): Promise<void> {
   await apiClient.delete(`/events/${encodeURIComponent(slug)}`);
 }
+
+export async function triggerReport(): Promise<void> {
+  await apiClient.post("/report/trigger");
+}
