@@ -148,13 +148,14 @@ export default function WebhookLogsPage() {
       {page && page.total > 0 && (
         <>
           <div className="mt-6 overflow-hidden rounded-lg border border-border bg-card">
-            <div className="grid grid-cols-[2rem_4rem_9rem_5rem_6rem_1fr] items-center gap-3 border-b border-border px-4 py-2.5 text-xs text-muted-foreground">
+            <div className="grid grid-cols-[2rem_4rem_9rem_5rem_6rem_1fr_auto] items-center gap-3 border-b border-border px-4 py-2.5 text-xs text-muted-foreground">
               <span />
               <span>ID</span>
               <span>Created</span>
               <span>Method</span>
               <span>Channel</span>
               <span>Body</span>
+              <span />
             </div>
             {page.items.map((item: WebhookLogEntry) => {
               const isOpen = openIds.has(item.id);
@@ -165,13 +166,20 @@ export default function WebhookLogsPage() {
                   onOpenChange={() => toggleOpen(item.id)}
                   className="border-b border-border last:border-b-0"
                 >
-                  <CollapsibleTrigger className="grid w-full grid-cols-[2rem_4rem_9rem_5rem_6rem_1fr] items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors hover:bg-muted/50">
-                    <ChevronRight
-                      className={cn(
-                        "size-4 text-muted-foreground transition-transform",
-                        isOpen && "rotate-90",
-                      )}
-                    />
+                  <div className="grid grid-cols-[2rem_4rem_9rem_5rem_6rem_1fr_auto] items-center gap-3 px-4 py-2.5 text-sm">
+                    <CollapsibleTrigger
+                      aria-label={
+                        isOpen ? "Collapse details" : "Expand details"
+                      }
+                      className="flex items-center justify-center rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      <ChevronRight
+                        className={cn(
+                          "size-4 transition-transform",
+                          isOpen && "rotate-90",
+                        )}
+                      />
+                    </CollapsibleTrigger>
                     <span className="text-muted-foreground">{item.id}</span>
                     <span className="text-muted-foreground">
                       {formatTaipeiDateTime(item.created_at)}
@@ -185,7 +193,17 @@ export default function WebhookLogsPage() {
                     <span className="truncate text-muted-foreground">
                       {summarizeBody(item.body)}
                     </span>
-                  </CollapsibleTrigger>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(item.id)}
+                      disabled={isPending}
+                    >
+                      Delete
+                    </Button>
+                  </div>
                   <CollapsibleContent>
                     <div className="flex flex-col gap-4 border-t border-border p-4">
                       <div>
@@ -205,18 +223,6 @@ export default function WebhookLogsPage() {
                             No body.
                           </p>
                         )}
-                      </div>
-                      <div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(item.id)}
-                          disabled={isPending}
-                        >
-                          Delete
-                        </Button>
                       </div>
                     </div>
                   </CollapsibleContent>
