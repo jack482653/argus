@@ -17,6 +17,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useRequireAuth } from "@/hooks/use-require-auth";
+import { formatTaipeiDateTime } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 import type {
   WebhookLogEntry,
@@ -147,13 +148,13 @@ export default function WebhookLogsPage() {
       {page && page.total > 0 && (
         <>
           <div className="mt-6 overflow-hidden rounded-lg border border-border bg-card">
-            <div className="grid grid-cols-[2rem_4rem_5rem_6rem_1fr_5rem] items-center gap-3 border-b border-border px-4 py-2.5 text-xs text-muted-foreground">
+            <div className="grid grid-cols-[2rem_4rem_9rem_5rem_6rem_1fr] items-center gap-3 border-b border-border px-4 py-2.5 text-xs text-muted-foreground">
               <span />
               <span>ID</span>
+              <span>Created</span>
               <span>Method</span>
               <span>Channel</span>
               <span>Body</span>
-              <span />
             </div>
             {page.items.map((item: WebhookLogEntry) => {
               const isOpen = openIds.has(item.id);
@@ -164,7 +165,7 @@ export default function WebhookLogsPage() {
                   onOpenChange={() => toggleOpen(item.id)}
                   className="border-b border-border last:border-b-0"
                 >
-                  <CollapsibleTrigger className="grid w-full grid-cols-[2rem_4rem_5rem_6rem_1fr_5rem] items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors hover:bg-muted/50">
+                  <CollapsibleTrigger className="grid w-full grid-cols-[2rem_4rem_9rem_5rem_6rem_1fr] items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors hover:bg-muted/50">
                     <ChevronRight
                       className={cn(
                         "size-4 text-muted-foreground transition-transform",
@@ -172,6 +173,9 @@ export default function WebhookLogsPage() {
                       )}
                     />
                     <span className="text-muted-foreground">{item.id}</span>
+                    <span className="text-muted-foreground">
+                      {formatTaipeiDateTime(item.created_at)}
+                    </span>
                     <Badge className="w-fit rounded bg-chart-3/15 px-2 py-0.5 font-mono text-xs text-chart-3">
                       {item.method}
                     </Badge>
@@ -180,9 +184,6 @@ export default function WebhookLogsPage() {
                     </span>
                     <span className="truncate text-muted-foreground">
                       {summarizeBody(item.body)}
-                    </span>
-                    <span className="text-muted-foreground">
-                      {item.created_at}
                     </span>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
