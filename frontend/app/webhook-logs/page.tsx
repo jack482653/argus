@@ -230,29 +230,31 @@ export default function WebhookLogsPage() {
               );
             })}
           </div>
-          <div className="mt-4 flex items-center gap-4 text-sm">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={offset === 0}
-              onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-            >
-              Previous
-            </Button>
+          <div className="mt-4 flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
               {offset + 1}–{Math.min(offset + PAGE_SIZE, page.total)} of{" "}
               {page.total}
             </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={offset + PAGE_SIZE >= page.total}
-              onClick={() => setOffset(offset + PAGE_SIZE)}
-            >
-              Next
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={offset === 0}
+                onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+              >
+                Previous
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={offset + PAGE_SIZE >= page.total}
+                onClick={() => setOffset(offset + PAGE_SIZE)}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         </>
       )}
