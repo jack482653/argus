@@ -48,30 +48,28 @@ function EventDetailContent() {
     return null;
   }
   if (auth.status === "error") {
-    return (
-      <p className="p-6 text-destructive">Failed to load: {auth.message}</p>
-    );
+    return <p className="text-destructive">Failed to load: {auth.message}</p>;
   }
   if (auth.status !== "authenticated") {
     return null;
   }
 
   if (!slug) {
-    return <p className="p-6">No event selected.</p>;
+    return <p>No event selected.</p>;
   }
 
   if (error) {
-    return <p className="p-6 text-destructive">{error}</p>;
+    return <p className="text-destructive">{error}</p>;
   }
 
   if (!timeseries) {
-    return <p className="p-6">Loading…</p>;
+    return <p>Loading…</p>;
   }
 
   const startLabel = formatStartDate(timeseries.event.start_at);
 
   return (
-    <main className="mx-auto max-w-3xl p-8">
+    <>
       <Link
         href="/"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -101,7 +99,7 @@ function EventDetailContent() {
       <div className="mt-6 rounded-lg border border-border bg-card p-5">
         <EventChart timeseries={timeseries} />
       </div>
-    </main>
+    </>
   );
 }
 
@@ -111,7 +109,7 @@ export default function EventDetailPage() {
   // statically-exported route like this one (see next.config.ts's
   // `output: "export"`).
   return (
-    <Suspense fallback={<p className="p-6">Loading…</p>}>
+    <Suspense fallback={<p>Loading…</p>}>
       <EventDetailContent />
     </Suspense>
   );

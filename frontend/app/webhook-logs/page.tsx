@@ -38,9 +38,7 @@ export default function WebhookLogsPage() {
     return null;
   }
   if (auth.status === "error") {
-    return (
-      <p className="p-6 text-destructive">Failed to load: {auth.message}</p>
-    );
+    return <p className="text-destructive">Failed to load: {auth.message}</p>;
   }
   if (auth.status !== "authenticated") {
     return null;
@@ -78,7 +76,7 @@ export default function WebhookLogsPage() {
   };
 
   return (
-    <main className="mx-auto max-w-4xl p-8">
+    <>
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-3xl font-semibold">Webhook Logs</h1>
         <Button
@@ -168,6 +166,6 @@ export default function WebhookLogsPage() {
           </div>
         </>
       )}
-    </main>
+    </>
   );
 }

@@ -49,7 +49,7 @@ export default function DashboardHomePage() {
   }
   if (auth.status === "error") {
     return (
-      <p className="p-8 text-base text-destructive">
+      <p className="text-base text-destructive">
         Failed to load: {auth.message}
       </p>
     );
@@ -85,7 +85,7 @@ export default function DashboardHomePage() {
   };
 
   return (
-    <main className="mx-auto max-w-3xl p-8">
+    <>
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="font-heading text-3xl font-semibold">Events</h1>
@@ -160,6 +160,6 @@ export default function DashboardHomePage() {
           );
         })}
       </div>
-    </main>
+    </>
   );
 }

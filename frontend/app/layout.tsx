@@ -60,7 +60,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             Logout
           </a>
         </nav>
-        {children}
+        <main className="mx-auto w-full max-w-4xl flex-1 p-8">{children}</main>
       </body>
     </html>
   );
