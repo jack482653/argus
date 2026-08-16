@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
-import { ChevronRight, RefreshCw } from "lucide-react";
+import { CalendarX, ChevronRight, RefreshCw } from "lucide-react";
 import { deleteEvent, listEvents, triggerReport } from "@/apis/events";
+import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/hooks/use-require-auth";
@@ -110,7 +111,11 @@ export default function DashboardHomePage() {
           <p className="text-base text-muted-foreground">Loading…</p>
         )}
         {events?.length === 0 && (
-          <p className="text-base text-muted-foreground">No events yet.</p>
+          <EmptyState
+            icon={CalendarX}
+            title="No events yet"
+            description="Events appear automatically once KKTIX sends a registration webhook."
+          />
         )}
         {events?.map((event) => {
           const startLabel = formatStartDate(event.start_at);

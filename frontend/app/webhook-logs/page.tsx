@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { Inbox } from "lucide-react";
 import {
   clearWebhookLogs,
   deleteWebhookLog,
   listWebhookLogs,
 } from "@/apis/webhook-logs";
+import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/hooks/use-require-auth";
@@ -94,7 +96,16 @@ export default function WebhookLogsPage() {
       {page === null && !error && (
         <p className="mt-4 text-base text-muted-foreground">Loading…</p>
       )}
-      {page && (
+      {page && page.total === 0 && (
+        <div className="mt-6">
+          <EmptyState
+            icon={Inbox}
+            title="No webhook events yet"
+            description="Registration and cancellation webhooks from KKTIX will show up here."
+          />
+        </div>
+      )}
+      {page && page.total > 0 && (
         <>
           <div className="mt-6 overflow-hidden rounded-lg border border-border bg-card">
             <table className="w-full text-left text-sm">
