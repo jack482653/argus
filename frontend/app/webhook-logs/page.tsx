@@ -1,19 +1,45 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Inbox } from "lucide-react";
+import { ChevronRight, Inbox } from "lucide-react";
 import {
   clearWebhookLogs,
   deleteWebhookLog,
   listWebhookLogs,
 } from "@/apis/webhook-logs";
 import { EmptyState } from "@/components/empty-state";
+import { JsonViewer } from "@/components/json-viewer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useRequireAuth } from "@/hooks/use-require-auth";
-import type { WebhookLogsPage } from "@/types/responses/webhook-logs";
+import { cn } from "@/lib/utils";
+import type {
+  WebhookLogEntry,
+  WebhookLogsPage,
+} from "@/types/responses/webhook-logs";
 
 const PAGE_SIZE = 50;
+
+function summarizeBody(body: string | null): string {
+  if (!body) return "—";
+  try {
+    const parsed = JSON.parse(body) as {
+      notifications?: Array<{ type?: string; event?: { slug?: string } }>;
+    };
+    const notification = parsed.notifications?.[0];
+    if (notification?.type && notification.event?.slug) {
+      return `${notification.type} · ${notification.event.slug}`;
+    }
+  } catch {
+    // Not JSON, or not the shape we expect — show the placeholder below.
+  }
+  return "—";
+}
 
 export default function WebhookLogsPage() {
   const auth = useRequireAuth();
@@ -21,6 +47,7 @@ export default function WebhookLogsPage() {
   const [page, setPage] = useState<WebhookLogsPage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [openIds, setOpenIds] = useState<Set<number>>(new Set());
 
   const reload = () => {
     return listWebhookLogs(PAGE_SIZE, offset)
@@ -45,6 +72,18 @@ export default function WebhookLogsPage() {
   if (auth.status !== "authenticated") {
     return null;
   }
+
+  const toggleOpen = (id: number) => {
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   const handleDelete = (id: number) => {
     startTransition(async () => {
@@ -108,48 +147,81 @@ export default function WebhookLogsPage() {
       {page && page.total > 0 && (
         <>
           <div className="mt-6 overflow-hidden rounded-lg border border-border bg-card">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-border text-xs text-muted-foreground">
-                  <th className="px-4 py-2.5 font-medium">Method</th>
-                  <th className="px-4 py-2.5 font-medium">Channel</th>
-                  <th className="px-4 py-2.5 font-medium">Created</th>
-                  <th className="px-4 py-2.5" />
-                </tr>
-              </thead>
-              <tbody>
-                {page.items.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="border-b border-border last:border-b-0"
-                  >
-                    <td className="px-4 py-2.5">
-                      <Badge className="rounded bg-chart-3/15 px-2 py-0.5 font-mono text-xs text-chart-3">
-                        {item.method}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-2.5 text-foreground">
+            <div className="grid grid-cols-[2rem_4rem_5rem_6rem_1fr_5rem] items-center gap-3 border-b border-border px-4 py-2.5 text-xs text-muted-foreground">
+              <span />
+              <span>ID</span>
+              <span>Method</span>
+              <span>Channel</span>
+              <span>Body</span>
+              <span />
+            </div>
+            {page.items.map((item: WebhookLogEntry) => {
+              const isOpen = openIds.has(item.id);
+              return (
+                <Collapsible
+                  key={item.id}
+                  open={isOpen}
+                  onOpenChange={() => toggleOpen(item.id)}
+                  className="border-b border-border last:border-b-0"
+                >
+                  <CollapsibleTrigger className="grid w-full grid-cols-[2rem_4rem_5rem_6rem_1fr_5rem] items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors hover:bg-muted/50">
+                    <ChevronRight
+                      className={cn(
+                        "size-4 text-muted-foreground transition-transform",
+                        isOpen && "rotate-90",
+                      )}
+                    />
+                    <span className="text-muted-foreground">{item.id}</span>
+                    <Badge className="w-fit rounded bg-chart-3/15 px-2 py-0.5 font-mono text-xs text-chart-3">
+                      {item.method}
+                    </Badge>
+                    <span className="text-foreground">
                       {item.channel ?? "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">
+                    </span>
+                    <span className="truncate text-muted-foreground">
+                      {summarizeBody(item.body)}
+                    </span>
+                    <span className="text-muted-foreground">
                       {item.created_at}
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(item.id)}
-                        disabled={isPending}
-                      >
-                        Delete
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="flex flex-col gap-4 border-t border-border p-4">
+                      <div>
+                        <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                          Headers
+                        </p>
+                        <JsonViewer value={item.headers} />
+                      </div>
+                      <div>
+                        <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                          Body
+                        </p>
+                        {item.body ? (
+                          <JsonViewer value={item.body} />
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            No body.
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(item.id)}
+                          disabled={isPending}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              );
+            })}
           </div>
           <div className="mt-4 flex items-center gap-4 text-sm">
             <Button
