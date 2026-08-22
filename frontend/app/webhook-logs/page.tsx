@@ -9,6 +9,7 @@ import {
 } from "@/apis/webhook-logs";
 import { EmptyState } from "@/components/empty-state";
 import { JsonViewer } from "@/components/json-viewer";
+import { PaginationFooter } from "@/components/pagination-footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -230,31 +231,13 @@ export default function WebhookLogsPage() {
               );
             })}
           </div>
-          <div className="mt-4 flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">
-              {offset + 1}–{Math.min(offset + PAGE_SIZE, page.total)} of{" "}
-              {page.total}
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={offset === 0}
-                onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-              >
-                Previous
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={offset + PAGE_SIZE >= page.total}
-                onClick={() => setOffset(offset + PAGE_SIZE)}
-              >
-                Next
-              </Button>
-            </div>
+          <div className="mt-4">
+            <PaginationFooter
+              offset={offset}
+              limit={PAGE_SIZE}
+              total={page.total}
+              onOffsetChange={setOffset}
+            />
           </div>
         </>
       )}
