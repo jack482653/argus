@@ -191,27 +191,27 @@ export default function WebhookLogsPage() {
                         {item.method}
                       </Badge>
                     </div>
-                    <div className="flex items-center justify-between gap-3 text-sm">
-                      <span className="shrink-0 text-muted-foreground">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-muted-foreground">
                         Created
                       </span>
-                      <span className="text-muted-foreground">
+                      <span className="text-sm text-muted-foreground">
                         {formatTaipeiDateTime(item.created_at)}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between gap-3 text-sm">
-                      <span className="shrink-0 text-muted-foreground">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-muted-foreground">
                         Channel
                       </span>
-                      <span className="text-foreground">
+                      <span className="text-sm text-foreground">
                         {item.channel ?? "—"}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between gap-3 text-sm">
-                      <span className="shrink-0 text-muted-foreground">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-muted-foreground">
                         Body
                       </span>
-                      <span className="min-w-0 text-right break-words text-muted-foreground">
+                      <span className="text-sm break-words text-muted-foreground">
                         {summarizeBody(item.body)}
                       </span>
                     </div>
