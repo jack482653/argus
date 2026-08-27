@@ -149,7 +149,7 @@ export default function WebhookLogsPage() {
       {page && page.total > 0 && (
         <>
           <div className="mt-6 overflow-hidden rounded-lg border border-border bg-card">
-            <div className="grid grid-cols-[2rem_4rem_9rem_5rem_6rem_1fr_auto] items-center gap-3 border-b border-border px-4 py-2.5 text-xs text-muted-foreground">
+            <div className="hidden items-center gap-3 border-b border-border px-4 py-2.5 text-xs text-muted-foreground tablet:grid tablet:grid-cols-[2rem_4rem_9rem_5rem_6rem_1fr_auto]">
               <span />
               <span>ID</span>
               <span>Created</span>
@@ -167,7 +167,66 @@ export default function WebhookLogsPage() {
                   onOpenChange={() => toggleOpen(item.id)}
                   className="border-b border-border last:border-b-0"
                 >
-                  <div className="grid grid-cols-[2rem_4rem_9rem_5rem_6rem_1fr_auto] items-center gap-3 px-4 py-2.5 text-sm">
+                  {/* Below `tablet:`, columns don't fit a single row — stack
+                      each field as its own labeled line instead. */}
+                  <div className="flex flex-col gap-2 p-4 tablet:hidden">
+                    <div className="flex items-center justify-between">
+                      <CollapsibleTrigger
+                        aria-label={
+                          isOpen ? "Collapse details" : "Expand details"
+                        }
+                        className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        <ChevronRight
+                          className={cn(
+                            "size-4 transition-transform",
+                            isOpen && "rotate-90",
+                          )}
+                        />
+                        <span className="text-sm font-medium text-foreground">
+                          #{item.id}
+                        </span>
+                      </CollapsibleTrigger>
+                      <Badge className="w-fit rounded bg-chart-3/15 px-2 py-0.5 font-mono text-xs text-chart-3">
+                        {item.method}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="shrink-0 text-muted-foreground">
+                        Created
+                      </span>
+                      <span className="text-muted-foreground">
+                        {formatTaipeiDateTime(item.created_at)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="shrink-0 text-muted-foreground">
+                        Channel
+                      </span>
+                      <span className="text-foreground">
+                        {item.channel ?? "—"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="shrink-0 text-muted-foreground">
+                        Body
+                      </span>
+                      <span className="truncate text-right text-muted-foreground">
+                        {summarizeBody(item.body)}
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="self-end text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(item.id)}
+                      disabled={isPending}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                  <div className="hidden items-center gap-3 px-4 py-2.5 text-sm tablet:grid tablet:grid-cols-[2rem_4rem_9rem_5rem_6rem_1fr_auto]">
                     <CollapsibleTrigger
                       aria-label={
                         isOpen ? "Collapse details" : "Expand details"
