@@ -68,7 +68,7 @@ URL: `https://your-domain/webhook/kktix/sprint`, env var: `DISCORD_WEBHOOK_SPRIN
 A Google-OAuth-protected web UI for viewing per-event registration time series.
 
 - **Event list:** `/dashboard`
-- **Per-event chart:** `/dashboard/events/{slug}` — line chart of Total + each ticket type, with capacity (horizontal dashed) and event start (vertical dashed) reference lines.
+- **Per-event chart:** `/dashboard/events?slug=<slug>` — line chart of Total + each ticket type, with capacity (horizontal dashed) and event start (vertical dashed) reference lines.
 
 ### One-time Google OAuth setup
 

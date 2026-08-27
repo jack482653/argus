@@ -1,41 +1,12 @@
-from datetime import datetime
-from pathlib import Path
-from zoneinfo import ZoneInfo
 import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse, RedirectResponse
 
-from argus import auth, config
+from argus import auth
 from argus.dashboard import queries
 from argus.kktix.report import send_report
-
-
-_TEMPLATES_DIR = Path(__file__).parent / "templates"
-_EVENTS_STATIC_DIR = Path(__file__).parent / "frontend" / "events"
-_UTC = ZoneInfo("UTC")
-templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
-
-
-def _format_start_at_local(utc_iso: str | None) -> str | None:
-    """Render a stored UTC ISO 8601 timestamp in the configured display timezone."""
-    if not utc_iso:
-        return None
-    tz = ZoneInfo(config.settings.report_timezone)
-    dt = datetime.fromisoformat(utc_iso).replace(tzinfo=_UTC).astimezone(tz)
-    return dt.strftime(f"%Y-%m-%d %H:%M ({config.settings.report_timezone})")
-
-
-def _session_email_or_redirect(request: Request) -> str | RedirectResponse:
-    """Returns the authenticated email, or a RedirectResponse to /dashboard/login."""
-    user = request.session.get("user")
-    if not user or not user.get("email") or not auth.is_email_allowed(user["email"]):
-        return RedirectResponse(
-            url="/dashboard/login", status_code=status.HTTP_302_FOUND
-        )
-    return user["email"]
 
 
 logger = logging.getLogger(__name__)
@@ -77,38 +48,6 @@ async def oauth_callback(request: Request):
 async def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/dashboard/login", status_code=status.HTTP_302_FOUND)
-
-
-@router.get("/dashboard/events/{slug}")
-async def dashboard_event(slug: str, request: Request):
-    # Next's static export emits internal client-navigation payload files
-    # (index.txt, __next._tree.txt, ...) under this same /dashboard/events/*
-    # prefix, and this route (registered before the StaticFiles mount in
-    # main.py) would otherwise swallow them as spurious event-slug lookups.
-    # Serve the real static file directly if the "slug" actually corresponds
-    # to one, before falling through to the legacy Jinja2/session logic.
-    static_file = _EVENTS_STATIC_DIR / slug
-    if static_file.is_file():
-        return FileResponse(static_file)
-
-    result = _session_email_or_redirect(request)
-    if isinstance(result, RedirectResponse):
-        return result
-    event = queries.get_event(slug)
-    if event is None:
-        raise HTTPException(status_code=404, detail="event_not_found")
-    return templates.TemplateResponse(
-        request=request,
-        name="event.html",
-        context={
-            "user_email": result,
-            "slug": slug,
-            "event_name": event["event_name"],
-            "channel": event["channel"],
-            "start_at": _format_start_at_local(event["start_at"]),
-            "capacity": event["capacity"],
-        },
-    )
 
 
 # ── JSON API ────────────────────────────────────────────────────────────────

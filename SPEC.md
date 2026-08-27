@@ -55,7 +55,6 @@ Argus uses a **vertical slice** layout: each feature owns its full stack (HTTP r
 | `GET` | `/dashboard/logout` | — | Clear session, redirect to login | [Dashboard](#dashboard) |
 | `GET` | `/dashboard` | public (shell) | Event list page (static Next.js export) | [Dashboard](#dashboard) |
 | `GET` | `/dashboard/events` | public (shell) | Per-event chart page, `?slug=<slug>` (static Next.js export) | [Dashboard](#dashboard) |
-| `GET` | `/dashboard/events/{slug}` | session (HTML) | Legacy per-event chart page (server-rendered Jinja2; retained for old bookmarks/links) | [Dashboard](#dashboard) |
 | `GET` | `/dashboard/webhook-logs` | public (shell) | Webhook log viewer page (static Next.js export) | [Dashboard](#dashboard) |
 | `GET` | `/dashboard/api/me` | session (401) | JSON: currently authenticated user | [Dashboard](#dashboard) |
 | `GET` | `/dashboard/api/events` | session (401) | JSON: event list | [Dashboard](#dashboard) |
@@ -94,10 +93,6 @@ argus/
 │       │   ├── __init__.py
 │       │   ├── router.py         # /dashboard/* routes
 │       │   ├── queries.py        # time series queries
-│       │   ├── templates/
-│       │   │   ├── _base.html    # shared layout
-│       │   │   ├── index.html    # event list
-│       │   │   └── event.html    # per-event chart (legacy, retained route)
 │       │   └── frontend/         # built Next.js static export, copied in at
 │       │                         # build time (gitignored); served by main.py's
 │       │                         # StaticFiles mount at /dashboard
@@ -399,7 +394,7 @@ A web UI that visualizes registration trends per event over time. Implemented as
 
 ### Routes
 
-See [API Reference](#api-reference) for the canonical list. The dashboard UI itself is a statically-exported Next.js app served same-origin under `/dashboard`, `/dashboard/events`, and `/dashboard/webhook-logs` — these three pages are public shells with no server-side session check; each gates its own content client-side by calling `/dashboard/api/me` (and other `/dashboard/api/*` routes) and redirecting to `/dashboard/login` in the browser if that call 401s. The one exception is the legacy, server-rendered `/dashboard/events/{slug}` route (kept for old bookmarks/links), which still checks the session server-side and 302-redirects to `/dashboard/login` on failure. Every `/dashboard/api/*` route requires the session cookie and returns `401` if it's missing or invalid.
+See [API Reference](#api-reference) for the canonical list. The dashboard UI itself is a statically-exported Next.js app served same-origin under `/dashboard`, `/dashboard/events`, and `/dashboard/webhook-logs` — these three pages are public shells with no server-side session check; each gates its own content client-side by calling `/dashboard/api/me` (and other `/dashboard/api/*` routes) and redirecting to `/dashboard/login` in the browser if that call 401s. Every `/dashboard/api/*` route requires the session cookie and returns `401` if it's missing or invalid.
 
 ### Authentication
 
@@ -407,7 +402,7 @@ Server-side OAuth 2.0 with Google as the identity provider. After successful OAu
 
 **Flow:**
 
-1. Visit `/dashboard` without a session → the static shell loads, its client-side `/dashboard/api/me` call 401s, and the browser is redirected to `/dashboard/login` (or visit the legacy `/dashboard/events/{slug}` route directly without a session → server-side 302 to `/dashboard/login`)
+1. Visit `/dashboard` without a session → the static shell loads, its client-side `/dashboard/api/me` call 401s, and the browser is redirected to `/dashboard/login`
 2. `/dashboard/login` → 302 to Google consent screen
 3. Google → `/dashboard/oauth/callback?code=...`
 4. Backend exchanges code for `id_token`, verifies email is in `ALLOWED_EMAILS`
