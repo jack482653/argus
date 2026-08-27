@@ -211,7 +211,7 @@ export default function WebhookLogsPage() {
                       <span className="shrink-0 text-muted-foreground">
                         Body
                       </span>
-                      <span className="truncate text-right text-muted-foreground">
+                      <span className="min-w-0 text-right break-words text-muted-foreground">
                         {summarizeBody(item.body)}
                       </span>
                     </div>
@@ -250,7 +250,7 @@ export default function WebhookLogsPage() {
                     <span className="text-foreground">
                       {item.channel ?? "—"}
                     </span>
-                    <span className="truncate text-muted-foreground">
+                    <span className="min-w-0 break-words text-muted-foreground">
                       {summarizeBody(item.body)}
                     </span>
                     <Button
