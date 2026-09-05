@@ -17,6 +17,28 @@ export default defineConfig({
     },
   },
   test: {
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "lcov"],
+      // Vitest 4's v8 provider reports every file matched by `include` (as
+      // 0% if untested), not just files a test happened to import — so an
+      // untested page/component still shows up instead of being silently
+      // absent from the report.
+      include: [
+        "apis/**/*.{ts,tsx}",
+        "app/**/*.{ts,tsx}",
+        "components/**/*.{ts,tsx}",
+        "configurations/**/*.{ts,tsx}",
+        "hooks/**/*.{ts,tsx}",
+        "lib/**/*.{ts,tsx}",
+      ],
+      exclude: [
+        // Generated via `pnpm dlx shadcn@latest add`, not hand-authored —
+        // same reasoning as excluding a vendored dependency.
+        "components/ui/**",
+        "**/*.d.ts",
+      ],
+    },
     projects: [
       {
         extends: true,

@@ -67,7 +67,13 @@ jobs:
       # deliberately left as a local-only check for now.
       - name: Test
         working-directory: frontend
-        run: pnpm test
+        run: pnpm test:coverage
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v7
+        with:
+          files: frontend/coverage/lcov.info
+          flags: frontend
 
       - name: Build
         working-directory: frontend
