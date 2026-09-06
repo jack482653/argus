@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono, Inter, Playfair_Display } from "next/font/google";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { Toaster } from "react-hot-toast";
 import { BACKEND_ORIGIN } from "@/configurations/backend";
 import { cn } from "@/lib/utils";
 import "./globals.css";
@@ -61,6 +62,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </a>
         </nav>
         <main className="mx-auto w-full max-w-4xl flex-1 p-8">{children}</main>
+        <Toaster
+          toastOptions={{
+            className:
+              "!rounded-lg !border !border-border !bg-card !text-sm !text-foreground",
+          }}
+        />
       </body>
     </html>
   );

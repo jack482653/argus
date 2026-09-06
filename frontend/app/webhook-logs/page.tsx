@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { ChevronRight, Inbox } from "lucide-react";
+import toast from "react-hot-toast";
 import {
   clearWebhookLogs,
   deleteWebhookLog,
@@ -27,6 +28,13 @@ import type {
 
 const PAGE_SIZE = 50;
 
+const EMPTY_PAGE: WebhookLogsPage = {
+  items: [],
+  total: 0,
+  limit: PAGE_SIZE,
+  offset: 0,
+};
+
 function summarizeBody(body: string | null): string {
   if (!body) return "—";
   try {
@@ -46,23 +54,30 @@ function summarizeBody(body: string | null): string {
 export default function WebhookLogsPage() {
   const auth = useRequireAuth();
   const [offset, setOffset] = useState(0);
-  const [page, setPage] = useState<WebhookLogsPage | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [page, setPage] = useState<WebhookLogsPage>(EMPTY_PAGE);
+  const [isLoadingLogs, startLoadingLogs] = useTransition();
+  const [isDeleting, startDeleting] = useTransition();
+  const [isClearingAll, startClearingAll] = useTransition();
   const [openIds, setOpenIds] = useState<Set<number>>(new Set());
-
-  const reload = () => {
-    return listWebhookLogs(PAGE_SIZE, offset)
-      .then(setPage)
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Failed to load logs");
-      });
-  };
 
   useEffect(() => {
     if (auth.status !== "authenticated") return;
-    reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let cancelled = false;
+    startLoadingLogs(async () => {
+      try {
+        const result = await listWebhookLogs(PAGE_SIZE, offset);
+        if (!cancelled) setPage(result);
+      } catch (err) {
+        if (!cancelled) {
+          toast.error(
+            err instanceof Error ? err.message : "Failed to load logs",
+          );
+        }
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [auth.status, offset]);
 
   if (auth.status === "loading") {
@@ -88,33 +103,36 @@ export default function WebhookLogsPage() {
   };
 
   const handleDelete = (id: number) => {
-    startTransition(async () => {
-      await deleteWebhookLog(id);
-      await reload();
+    startDeleting(async () => {
+      try {
+        await deleteWebhookLog(id);
+        setPage(await listWebhookLogs(PAGE_SIZE, offset));
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to delete log",
+        );
+      }
     });
   };
 
   const handleClearAll = () => {
     if (
       !window.confirm(
-        `Clear ALL ${page?.total ?? 0} webhook logs? This cannot be undone.`,
+        `Clear ALL ${page.total} webhook logs? This cannot be undone.`,
       )
     ) {
       return;
     }
-    startTransition(async () => {
-      await clearWebhookLogs();
-      setOffset(0);
-      // Fetch page 0 directly rather than calling reload() here — reload()'s
-      // closure was created with the OLD offset value at render time, and
-      // setOffset(0) above doesn't take effect until the next render, so
-      // calling reload() synchronously in this same handler would still
-      // request the stale offset.
-      await listWebhookLogs(PAGE_SIZE, 0)
-        .then(setPage)
-        .catch((err: unknown) => {
-          setError(err instanceof Error ? err.message : "Failed to load logs");
-        });
+    startClearingAll(async () => {
+      try {
+        await clearWebhookLogs();
+        setOffset(0);
+        setPage(await listWebhookLogs(PAGE_SIZE, 0));
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to clear logs",
+        );
+      }
     });
   };
 
@@ -128,16 +146,15 @@ export default function WebhookLogsPage() {
           size="sm"
           className="text-destructive hover:text-destructive"
           onClick={handleClearAll}
-          disabled={isPending}
+          disabled={isClearingAll}
         >
           Clear all
         </Button>
       </div>
-      {error && <p className="mt-4 text-base text-destructive">{error}</p>}
-      {page === null && !error && (
+      {isLoadingLogs && (
         <p className="mt-4 text-base text-muted-foreground">Loading…</p>
       )}
-      {page && page.total === 0 && (
+      {!isLoadingLogs && page.total === 0 && (
         <div className="mt-6">
           <EmptyState
             icon={Inbox}
@@ -146,7 +163,7 @@ export default function WebhookLogsPage() {
           />
         </div>
       )}
-      {page && page.total > 0 && (
+      {!isLoadingLogs && page.total > 0 && (
         <>
           <div className="mt-6 overflow-hidden rounded-lg border border-border bg-card">
             <div className="hidden items-center gap-3 border-b border-border px-4 py-2.5 text-xs text-muted-foreground tablet:grid tablet:grid-cols-[2rem_4rem_9rem_5rem_6rem_1fr_auto]">
@@ -221,7 +238,7 @@ export default function WebhookLogsPage() {
                       size="sm"
                       className="self-end text-destructive hover:text-destructive"
                       onClick={() => handleDelete(item.id)}
-                      disabled={isPending}
+                      disabled={isDeleting}
                     >
                       Delete
                     </Button>
@@ -259,7 +276,7 @@ export default function WebhookLogsPage() {
                       size="sm"
                       className="text-destructive hover:text-destructive"
                       onClick={() => handleDelete(item.id)}
-                      disabled={isPending}
+                      disabled={isDeleting}
                     >
                       Delete
                     </Button>

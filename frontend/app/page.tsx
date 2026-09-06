@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { CalendarX, ChevronRight, RefreshCw } from "lucide-react";
+import toast from "react-hot-toast";
 import { deleteEvent, listEvents, triggerReport } from "@/apis/events";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -22,24 +23,26 @@ function formatStartDate(startAt: string | null): string | null {
 
 export default function DashboardHomePage() {
   const auth = useRequireAuth();
-  const [events, setEvents] = useState<EventSummary[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [events, setEvents] = useState<EventSummary[]>([]);
+  const [isLoadingEvents, startLoadingEvents] = useTransition();
+  const [isTriggeringReport, startTriggeringReport] = useTransition();
+  const [isDeleting, startDeleting] = useTransition();
 
   useEffect(() => {
     if (auth.status !== "authenticated") return;
     let cancelled = false;
-    listEvents()
-      .then((result) => {
+    startLoadingEvents(async () => {
+      try {
+        const result = await listEvents();
         if (!cancelled) setEvents(result);
-      })
-      .catch((err: unknown) => {
+      } catch (err) {
         if (!cancelled) {
-          setError(
+          toast.error(
             err instanceof Error ? err.message : "Failed to load events",
           );
         }
-      });
+      }
+    });
     return () => {
       cancelled = true;
     };
@@ -60,8 +63,14 @@ export default function DashboardHomePage() {
   }
 
   const handleTriggerReport = () => {
-    startTransition(async () => {
-      await triggerReport();
+    startTriggeringReport(async () => {
+      try {
+        await triggerReport();
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to trigger report",
+        );
+      }
     });
   };
 
@@ -73,15 +82,15 @@ export default function DashboardHomePage() {
     ) {
       return;
     }
-    startTransition(async () => {
-      await deleteEvent(slug);
-      await listEvents()
-        .then(setEvents)
-        .catch((err: unknown) => {
-          setError(
-            err instanceof Error ? err.message : "Failed to load events",
-          );
-        });
+    startDeleting(async () => {
+      try {
+        await deleteEvent(slug);
+        setEvents(await listEvents());
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to delete event",
+        );
+      }
     });
   };
 
@@ -99,71 +108,73 @@ export default function DashboardHomePage() {
           variant="secondary"
           size="sm"
           onClick={handleTriggerReport}
-          disabled={isPending}
+          disabled={isTriggeringReport}
         >
           <RefreshCw className="size-3.5" />
           Run report now
         </Button>
       </div>
-      {error && <p className="mt-4 text-base text-destructive">{error}</p>}
       <div className="mt-8 flex flex-col gap-3">
-        {events === null && !error && (
+        {isLoadingEvents && (
           <p className="text-base text-muted-foreground">Loading…</p>
         )}
-        {events?.length === 0 && (
+        {!isLoadingEvents && events.length === 0 && (
           <EmptyState
             icon={CalendarX}
             title="No events yet"
             description="Events appear automatically once KKTIX sends a registration webhook."
           />
         )}
-        {events?.map((event) => {
-          const startLabel = formatStartDate(event.start_at);
-          return (
-            <div
-              key={event.event_slug}
-              className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-5 transition-colors hover:border-primary/40"
-            >
-              <Link
-                href={`/events?slug=${encodeURIComponent(event.event_slug)}`}
-                className="min-w-0 flex-1"
+        {!isLoadingEvents &&
+          events.map((event) => {
+            const startLabel = formatStartDate(event.start_at);
+            return (
+              <div
+                key={event.event_slug}
+                className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-5 transition-colors hover:border-primary/40"
               >
-                <div className="text-base font-medium">{event.event_name}</div>
-                <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                  {event.channel && (
-                    <Badge className="rounded-full bg-primary/15 px-2.5 py-0.5 text-xs text-primary">
-                      {event.channel}
-                    </Badge>
-                  )}
-                  {event.capacity !== null && (
-                    <span>Capacity {event.capacity}</span>
-                  )}
-                  {startLabel && (
-                    <>
-                      <span className="text-border">·</span>
-                      <span>Starts {startLabel}</span>
-                    </>
-                  )}
-                </div>
-              </Link>
-              <div className="flex items-center gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:text-destructive"
-                  onClick={() =>
-                    handleDelete(event.event_slug, event.event_name)
-                  }
-                  disabled={isPending}
+                <Link
+                  href={`/events?slug=${encodeURIComponent(event.event_slug)}`}
+                  className="min-w-0 flex-1"
                 >
-                  Delete
-                </Button>
-                <ChevronRight className="size-4 text-muted-foreground" />
+                  <div className="text-base font-medium">
+                    {event.event_name}
+                  </div>
+                  <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                    {event.channel && (
+                      <Badge className="rounded-full bg-primary/15 px-2.5 py-0.5 text-xs text-primary">
+                        {event.channel}
+                      </Badge>
+                    )}
+                    {event.capacity !== null && (
+                      <span>Capacity {event.capacity}</span>
+                    )}
+                    {startLabel && (
+                      <>
+                        <span className="text-border">·</span>
+                        <span>Starts {startLabel}</span>
+                      </>
+                    )}
+                  </div>
+                </Link>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() =>
+                      handleDelete(event.event_slug, event.event_name)
+                    }
+                    disabled={isDeleting}
+                  >
+                    Delete
+                  </Button>
+                  <ChevronRight className="size-4 text-muted-foreground" />
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
       </div>
     </>
   );

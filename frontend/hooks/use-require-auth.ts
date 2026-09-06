@@ -17,8 +17,9 @@ export function useRequireAuth(): AuthState {
   useEffect(() => {
     let cancelled = false;
 
-    getCurrentUser()
-      .then((user) => {
+    async function checkAuth() {
+      try {
+        const user = await getCurrentUser();
         if (cancelled) return;
         if (user) {
           setState({ status: "authenticated", user });
@@ -26,15 +27,16 @@ export function useRequireAuth(): AuthState {
           setState({ status: "unauthenticated" });
           window.location.href = `${BACKEND_ORIGIN}/dashboard/login`;
         }
-      })
-      .catch((error: unknown) => {
+      } catch (error) {
         if (cancelled) return;
         setState({
           status: "error",
           message: error instanceof Error ? error.message : "Unknown error",
         });
-      });
+      }
+    }
 
+    checkAuth();
     return () => {
       cancelled = true;
     };

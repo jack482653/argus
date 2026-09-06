@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
-import { ChevronLeft } from "lucide-react";
+import { Suspense, useEffect, useState, useTransition } from "react";
+import { ChevronLeft, FileQuestion, MousePointerClick } from "lucide-react";
+import toast from "react-hot-toast";
 import { getEventTimeseries } from "@/apis/events";
+import { EmptyState } from "@/components/empty-state";
 import { EventChart } from "@/components/event-chart";
 import { Badge } from "@/components/ui/badge";
 import { useRequireAuth } from "@/hooks/use-require-auth";
@@ -23,22 +25,23 @@ function EventDetailContent() {
   const searchParams = useSearchParams();
   const slug = searchParams.get("slug");
   const [timeseries, setTimeseries] = useState<EventTimeseries | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoadingTimeseries, startLoadingTimeseries] = useTransition();
 
   useEffect(() => {
     if (auth.status !== "authenticated" || !slug) return;
     let cancelled = false;
-    getEventTimeseries(slug)
-      .then((result) => {
+    startLoadingTimeseries(async () => {
+      try {
+        const result = await getEventTimeseries(slug);
         if (!cancelled) setTimeseries(result);
-      })
-      .catch((err: unknown) => {
+      } catch (err) {
         if (!cancelled) {
-          setError(
+          toast.error(
             err instanceof Error ? err.message : "Failed to load event data",
           );
         }
-      });
+      }
+    });
     return () => {
       cancelled = true;
     };
@@ -54,16 +57,28 @@ function EventDetailContent() {
     return null;
   }
 
-  if (!slug) {
-    return <p>No event selected.</p>;
+  if (isLoadingTimeseries) {
+    return <p>Loading…</p>;
   }
 
-  if (error) {
-    return <p className="text-destructive">{error}</p>;
+  if (!slug) {
+    return (
+      <EmptyState
+        icon={MousePointerClick}
+        title="No event selected"
+        description="Pick an event from the list to see its registration chart."
+      />
+    );
   }
 
   if (!timeseries) {
-    return <p>Loading…</p>;
+    return (
+      <EmptyState
+        icon={FileQuestion}
+        title="No data available"
+        description="This event doesn't have any chart data yet."
+      />
+    );
   }
 
   const startLabel = formatStartDate(timeseries.event.start_at);
