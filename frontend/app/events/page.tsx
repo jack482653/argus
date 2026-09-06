@@ -36,9 +36,8 @@ function EventDetailContent() {
         if (!cancelled) setTimeseries(result);
       } catch (err) {
         if (!cancelled) {
-          toast.error(
-            err instanceof Error ? err.message : "Failed to load event data",
-          );
+          console.error("Failed to load event data:", err);
+          toast.error("Failed to load event data");
         }
       }
     });

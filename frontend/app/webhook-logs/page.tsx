@@ -69,9 +69,8 @@ export default function WebhookLogsPage() {
         if (!cancelled) setPage(result);
       } catch (err) {
         if (!cancelled) {
-          toast.error(
-            err instanceof Error ? err.message : "Failed to load logs",
-          );
+          console.error("Failed to load logs:", err);
+          toast.error("Failed to load logs");
         }
       }
     });
@@ -108,9 +107,8 @@ export default function WebhookLogsPage() {
         await deleteWebhookLog(id);
         setPage(await listWebhookLogs(PAGE_SIZE, offset));
       } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to delete log",
-        );
+        console.error("Failed to delete log:", err);
+        toast.error("Failed to delete log");
       }
     });
   };
@@ -129,9 +127,8 @@ export default function WebhookLogsPage() {
         setOffset(0);
         setPage(await listWebhookLogs(PAGE_SIZE, 0));
       } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to clear logs",
-        );
+        console.error("Failed to clear logs:", err);
+        toast.error("Failed to clear logs");
       }
     });
   };

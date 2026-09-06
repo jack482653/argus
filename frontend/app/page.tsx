@@ -37,9 +37,8 @@ export default function DashboardHomePage() {
         if (!cancelled) setEvents(result);
       } catch (err) {
         if (!cancelled) {
-          toast.error(
-            err instanceof Error ? err.message : "Failed to load events",
-          );
+          console.error("Failed to load events:", err);
+          toast.error("Failed to load events");
         }
       }
     });
@@ -67,9 +66,8 @@ export default function DashboardHomePage() {
       try {
         await triggerReport();
       } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to trigger report",
-        );
+        console.error("Failed to trigger report:", err);
+        toast.error("Failed to trigger report");
       }
     });
   };
@@ -87,9 +85,8 @@ export default function DashboardHomePage() {
         await deleteEvent(slug);
         setEvents(await listEvents());
       } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to delete event",
-        );
+        console.error("Failed to delete event:", err);
+        toast.error("Failed to delete event");
       }
     });
   };
